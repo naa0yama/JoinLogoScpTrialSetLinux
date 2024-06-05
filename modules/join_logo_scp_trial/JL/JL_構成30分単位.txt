@@ -1,0 +1,75 @@
+# join_logo_scp用の実行内容スクリプト
+#
+# 内容：３０分単位の推測でJL_フラグ指定を実行
+#
+
+#----------------------------------------------
+# 分割して実行
+#----------------------------------------------
+If $MAXFRAME < 00:50:00           # 全体が50分未満の時は分割なし
+  Call "JL_フラグ指定.txt"
+Else                              # 分割設定
+  Set HEADFRAME   00:00:00
+  Set TAILFRAME   00:30:00
+  Call "JL_フラグ指定.txt"        # 分割最初を実行
+
+  Set HEADFRAME   00:30:00
+  If $MAXFRAME >= 01:20:00
+    Set TAILFRAME   01:00:00
+    Call "JL_フラグ指定.txt"      # 2分割目
+    Set HEADFRAME   01:00:00
+  EndIf
+  If $MAXFRAME >= 01:50:00
+    Set TAILFRAME   01:30:00
+    Call "JL_フラグ指定.txt"      # 3分割目
+    Set HEADFRAME   01:30:00
+  EndIf
+  If $MAXFRAME >= 02:20:00
+    Set TAILFRAME   02:00:00
+    Call "JL_フラグ指定.txt"      # 4分割目
+    Set HEADFRAME   02:00:00
+  EndIf
+  If $MAXFRAME >= 02:50:00
+    Set TAILFRAME   02:30:00
+    Call "JL_フラグ指定.txt"      # 5分割目
+    Set HEADFRAME   02:30:00
+  EndIf
+  If $MAXFRAME >= 03:20:00
+    Set TAILFRAME   03:00:00
+    Call "JL_フラグ指定.txt"      # 6分割目
+    Set HEADFRAME   03:00:00
+  EndIf
+  If $MAXFRAME >= 03:50:00
+    Set TAILFRAME   03:30:00
+    Call "JL_フラグ指定.txt"      # 7分割目
+    Set HEADFRAME   03:30:00
+  EndIf
+  If $MAXFRAME >= 04:20:00
+    Set TAILFRAME   04:00:00
+    Call "JL_フラグ指定.txt"      # 8分割目
+    Set HEADFRAME   04:00:00
+  EndIf
+  If $MAXFRAME >= 04:50:00
+    Set TAILFRAME   04:30:00
+    Call "JL_フラグ指定.txt"      # 9分割目
+    Set HEADFRAME   04:30:00
+  EndIf
+  If $MAXFRAME >= 05:20:00
+    Set TAILFRAME   05:00:00
+    Call "JL_フラグ指定.txt"      # 10分割目
+    Set HEADFRAME   05:00:00
+  EndIf
+  If $MAXFRAME >= 05:50:00
+    Set TAILFRAME   05:30:00
+    Call "JL_フラグ指定.txt"      # 11分割目
+    Set HEADFRAME   05:30:00
+  EndIf
+  If $MAXFRAME >= 06:20:00
+    Set TAILFRAME   06:00:00
+    Call "JL_フラグ指定.txt"      # 12分割目
+    Set HEADFRAME   06:00:00
+  EndIf
+
+  Set TAILFRAME   $MAXFRAME
+  Call "JL_フラグ指定.txt"        # 分割最終を実行
+EndIf

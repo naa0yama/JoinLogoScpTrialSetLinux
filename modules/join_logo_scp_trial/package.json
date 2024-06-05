@@ -1,0 +1,38 @@
+{
+  "name": "join_logo_scp_trial",
+  "version": "1.0.0",
+  "description": "",
+  "main": "src/jlse.js",
+  "scripts": {
+    "start": "node src/jlse.js",
+    "lint": "eslint --fix ."
+  },
+  "bin": {
+    "jlse": "src/jlse.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/tobitti0/join_logo_scp_trial.git"
+  },
+  "author": "sogaani",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/tobitti0/join_logo_scp_trial/issues"
+  },
+  "homepage": "https://github.com/tobitti0/join_logo_scp_trial",
+  "dependencies": {
+    "async": "^3.2.0",
+    "csv": "^5.3.2",
+    "fs-extra": "^9.0.0",
+    "jaconv": "^1.0.1",
+    "uuid": "^3.3.2",
+    "yargs": "^15.3.1"
+  },
+  "devDependencies": {
+    "eslint": "^5.9.0",
+    "eslint-config-google": "^0.11.0",
+    "eslint-config-prettier": "^3.1.0",
+    "eslint-plugin-prettier": "^3.0.0",
+    "prettier": "^1.15.1"
+  }
+}

@@ -1,0 +1,95 @@
+join_logo_scp動作確認用バッチファイル の説明   by Yobi
+
+■ 概要
+join_logo_scpのCM位置検出機能について動作確認をするバッチファイルです。
+AVSファイルまたはTSファイルを入力として、
+・CMカットしたAVSファイル
+・推測構成情報も使ったチャプターファイル
+を作成します。
+
+
+実行手順：（事前にAviSynthとL-SMASH Worksは入れてください）
+
+１．（省略可）使用するロゴデータ(*.lgd)をこのフォルダ直下logoフォルダに格納
+　　※精度はロゴありの方が高いですが、ロゴ省略は検出時間を短縮できます
+２．バッチ実行（下のいずれかでAVSファイルまたはTSファイルを指定）
+　　jlse_bat.bat 入力ファイル名
+　　jlse_bat.batに入力ファイルをドラッグ＆ドロップ
+３．検出が自動で行われ完了。AviUtl等で結果確認
+
+
+■結果ファイル
+[結果格納場所]
+AVSファイル入力時：AVSのあるフォルダ、
+TSファイル入力時：このフォルダ直下の"result\入力ファイル名"フォルダ
+
+主な出力ファイルは
+  in_cutcm.avs       : 結果（CMカットした入力ファイル）
+  in_cutcm_logo.avs  : 結果（CMカット＋delogo.dll適用入力ファイル）
+  in_org.avs         : CMカット前の入力ファイル
+  obs_cut.avs        : CMカットフレーム位置
+  obs_chapterexe.txt : chapter_exe結果
+  obs_logoframe.txt  : logoframe結果
+  obs_jlscp.txt      : join_logo_scpによる番組構成解析結果
+チャプター出力として
+  obs_chapter_cut.chapter.txt  : チャプター（CMカット後）
+  obs_chapter_org.chapter.txt  : チャプター（CMカットなし）
+  obs_chapter_tvtplay.chapter  : チャプター（TvtPlay用カットなしスキップ設定）
+  ※チャプター出力先を入力ファイル名に変更はsetting\bat_setup.bat記載で可能
+
+ファイルの結果確認方法（例）
+・in_cutcm.avs または in_cutcm_logo.avs をAviUtlで読み込み
+
+・in_org.avs をAviUtlで読み込み、obs_cut.avsのフレーム位置確認
+  CMカット位置付近の状態が確認できます。
+  カットの判断材料となった構成は、obs_jlscp.txtで確認できます。
+
+※AviUtlで読み込む場合、システムの設定で「フレーム番号の表示を1からにする」
+　のチェックを外して0からにします。
+
+
+■ 事前必要ファイル
+・AviSynthの実行環境（2.58以降の32bit版を推奨）
+  インストールしてください。
+・L-SMASH Worksプラグイン
+  TSファイルを入力とした場合、映像音声入力にL-SMASH Worksを使います。
+  下記ファイルを入れてください。
+  LSMASHSource.dll -> AviSynthのplugins
+  lwinput.aui      -> AviUtlのplugins、必要ならこのバッチフォルダ直下のbin
+  ※L-SMASH Worksでランタイムライブラリも入れる指示あれば従ってください
+    （msvcr100.dll,msvcr120.dll等）
+・検出対象のロゴデータファイル(*.lgd)
+  あれば精度を上げられます。なくても15秒単位のCM検出を可能にしました。
+  ロゴデータ個別設定（ロゴ名.logoframe.txt）も一緒に置いたら、
+  ロゴ個別設定（ロゴフェード期間等）が反映され精度向上に使われます。
+
+
+■注意点
+・このバッチファイルは初期状態でlogoフォルダ内全ロゴ検出するので、
+  ロゴが多く入っていると検出時間が長くなります。
+・このバッチファイルでTSファイルが正常に読み込めなくても、DGIndex使用など
+  別手段でAVSファイルを作成したら正常動作する場合があります。
+・ファイル名に放送局やタイトルを入れた場合、ファイル名から処理分岐できる
+  ようにしてあります（settingフォルダ内で設定）。
+・jlse_bat.batのかわりにjlse_bat_with_rename.batで起動したら、TSファイル限定で
+  処理できないファイル名の場合は自動で入力ファイルをリネームして実行します。
+・試行環境のスクリプト類はフリーソフトウェアで、転載・改変・一部利用は
+  連絡不要です。
+
+
+■更新内容
+ver 2.0
+・推測構成情報も使ったチャプター作成を追加
+  番組提供・予告・エンドカードと認識した所などもチャプター追加して作成
+・TSファイル入力時のRFF(Repeat First Flag)対応設定を追加
+  L-SMASH works呼び出しにRFF有効を設定。settingフォルダの設定でTFF/BFF指定可能
+・join_logo_scp用の設定変数base=-1の時、一番最初のカット位置を自動検索する
+  （最初からCMなしロゴありの場合で、従来通り先頭カット不要はbase=0を設定する）
+・30分複数回構成時の最適な設定を一部の局で追加
+  30分番組複数回が１番組の時、30分単位で構成推測する処理を作成
+・ファイル名による判断後にDGIndex+FAW動作させる例をバッチファイル内に追加
+  bin\bat_intools.batに追加していますが使う場合対象ソフトは別途入手必要
+・カット位置／ファイル名によるパラメータ手修正後再開例のバッチファイル追加
+  bin\restart_after_trim.batで手修正したobs_cut.avs位置のavs,chapter作成可能
+  bin\restart_after_param.batで手修正したobs_param.bat読み込みで再開可能
+・その他気づいた細かい修正
