@@ -1,0 +1,4 @@
+このフォルダは複数ロゴ同時検出 (Ver1.10)で作成。
+
+ver1.16で logosample.logoframe.txt の記載追加
+

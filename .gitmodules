@@ -1,6 +1,3 @@
-[submodule "modules/logoframe"]
-	path = modules/logoframe
-	url = https://github.com/tobitti0/logoframe.git
 [submodule "modules/tsdivider"]
 	path = modules/tsdivider
 	url = https://github.com/tobitti0/tsdivider
