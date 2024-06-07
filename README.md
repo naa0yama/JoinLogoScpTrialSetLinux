@@ -122,14 +122,15 @@ Linuxに移植されたsogaani氏、ツール群をユースケースと一緒�
 本レポジトリに含むライセンスは下記の通りです。  
 本レポジトリは GPL-3.0 とし、オリジナルの部分は下記表のとおりとします。
 
-| Source                                 | License         |
-| :------------------------------------- | :-------------- |
-| [tobitti0/JoinLogoScpTrialSetLinux][7] | Unknown         |
-| [tobitti0/chapter_exe][8]              | GPL-2.0 license |
-| [tobitti0/join_logo_scp][9]            | GPL-2.0 license |
-| [tobitti0/join_logo_scp_trial][10]     | Unknown         |
-| [tobitti0/logoframe][11]               | GPL-2.0 license |
-| [tobitti0/tsdivider][12]               | GPL-3.0 license |
+| Source                                   | License         |
+| :--------------------------------------- | :-------------- |
+| [tobitti0/JoinLogoScpTrialSetLinux][7]   | Unknown         |
+| [tobitti0/chapter_exe][8]                | GPL-2.0 license |
+| [tobitti0/join_logo_scp][9]              | GPL-2.0 license |
+| [tobitti0/join_logo_scp_trial][10]       | Unknown         |
+| [tobitti0/logoframe][11]                 | GPL-2.0 license |
+| [tobitti0/tsdivider][12]                 | GPL-3.0 license |
+| [tobitti0/delogo-AviSynthPlus-Linux][13] | GPL-2.0 license |
 
 [7]:https://tobitti.net/blog/Ubuntu-EPGStation-JoinLogoScpTrial/
 [8]:https://github.com/tobitti0/chapter_exe
@@ -137,3 +138,4 @@ Linuxに移植されたsogaani氏、ツール群をユースケースと一緒�
 [10]:https://github.com/tobitti0/join_logo_scp_trial
 [11]:https://github.com/tobitti0/logoframe
 [12]:https://github.com/tobitti0/tsdivider
+[13]:https://github.com/tobitti0/delogo-AviSynthPlus-Linux
