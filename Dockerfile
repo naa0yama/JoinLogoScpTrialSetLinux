@@ -444,6 +444,5 @@ RUN set -eux && \
     for i in decoders encoders; do echo ${i}:; ffmpeg -hide_banner -${i} | \
     egrep -i "[x|h]264|[x|h]265|av1|cuvid|hevc|libmfx|nv[dec|enc]|qsv|vaapi|vp9"; done
 
-WORKDIR /app
 ENTRYPOINT ["/bin/bash", "-c"]
-CMD ["nvidia-smi && npm start"]
+CMD ["npm start"]
