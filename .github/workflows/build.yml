@@ -2,7 +2,7 @@
 name: Builds
 
 on:
-  # push:
+  push:
   #  branches-ignore:
   #    - main
   pull_request:
@@ -28,7 +28,7 @@ on:
 jobs:
   builds:
     name: Container
-    if: ${{ contains(fromJson('["renovate/", "dev/","revert"]'), github.head_ref) }} || ${{ contains(fromJson('["renovate/", "dev/","revert"]'), github.ref_name) }} || ${{ inputs.rebuild == 'true' }}
+    #if: ${{ contains(fromJson('["renovate/", "dev/","revert"]'), github.head_ref) }} || ${{ contains(fromJson('["renovate/", "dev/","revert"]'), github.ref_name) }} || ${{ inputs.rebuild == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 40
     permissions:
