@@ -64,7 +64,7 @@ jobs:
         uses: docker/build-push-action@v5.0.0
         with:
           context: .
-          push: ${{ contains( github.event.pull_request.merged, true ) || inputs.rebuild == 'true' }}
+          push: true # ${{ contains( github.event.pull_request.merged, true ) || inputs.rebuild == 'true' }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
           tags: ${{ steps.meta.outputs.tags }}
