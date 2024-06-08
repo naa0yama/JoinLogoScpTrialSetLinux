@@ -217,13 +217,13 @@ RUN set -eux && \
 ## l-smash
 RUN set -eux && \
     cd ~/ffmpeg_sources && \
-    git clone --depth 1 https://github.com/vimeo/l-smash.git && \
+    git clone --depth 1 https://github.com/l-smash/l-smash.git && \
     cd l-smash && \
     ./configure \
     --prefix="/usr/local" \
     --enable-shared \
     && \
-    make -j$(nproc) lib && \
+    make -j$(nproc) && \
     make -j$(nproc) install && \
     ldconfig
 
