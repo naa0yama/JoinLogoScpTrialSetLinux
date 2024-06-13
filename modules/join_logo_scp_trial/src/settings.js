@@ -2,9 +2,9 @@ const path = require("path");
 const uuid = require("uuid/v4")();
 const fs = require("fs-extra");
 
-exports.CHANNEL_LIST = path.join(__dirname, "../setting/ChList.csv");
-exports.PARAM_LIST_1 = path.join(__dirname, "../setting/JLparam_set1.csv");
-exports.PARAM_LIST_2 = path.join(__dirname, "../setting/JLparam_set2.csv");
+exports.CHANNEL_LIST = path.join(__dirname, "../JL/data/ChList.csv");
+exports.PARAM_LIST_1 = path.join(__dirname, "../JL/data/ChParamJL1.csv");
+exports.PARAM_LIST_2 = path.join(__dirname, "../JL/data/ChParamJL2.csv");
 
 exports.LOGOFRAME_COMMAND = path.join(__dirname, "../bin/logoframe");
 exports.CHAPTEREXE_COMMAND = path.join(__dirname, "../bin/chapter_exe");
@@ -43,5 +43,3 @@ exports.init = filename=> {
   exports.FILE_TXT_CPT_TVT = path.join(save_dir, "obs_chapter_tvtplay.chapter");
   return this;
 };
-
-

@@ -44,10 +44,6 @@ exports.exec = (param, channel, filename) => {
     const args = [filename, "-oa", LOGOFRAME_TXT_OUTPUT, "-o", LOGOFRAME_AVS_OUTPUT];
     const logo = selectLogo(channel);
     let logosub = null;
-    if (param.LOGOSUBHEAD) {
-      logosub = getLogo(param.LOGOSUBHEAD);
-    }
-
     if (!logosub && !logo) {
       return;
     }

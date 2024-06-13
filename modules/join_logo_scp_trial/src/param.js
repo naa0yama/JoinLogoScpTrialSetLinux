@@ -22,7 +22,7 @@ const search = (paramList, channel, filename) => {
     //半角カナ    →全角
     const normal_filename = jaconv.normalize(filename);
     const normal_param_title = jaconv.normalize(param.title);
-    
+
     // 放送局の一致確認
     const channel_flag = short == param.channel ? true : false;
     //titleが指定されているか
@@ -79,17 +79,11 @@ exports.parse = (channel, filepath) => {
       columns: [
         "channel",
         "title",
-        "JLOGO_CMD",
-        "JL_FLAGS",
-        "JLOGO_OPT1",
-        "JLOGO_OPT2",
-        "JLOGO_NOLOGO",
-        "LOGOSUBHEAD",
-        "use_tssplit",
-        "use_intools",
-        "tffbff",
-        "comment1",
-        "comment2"
+        "JL_RUN",
+        "FLAGS",
+        "OPTIONS",
+        "CommentView",
+        "Comment"
       ]
     });
     const param = search(paramList, channel, path.basename(filepath));

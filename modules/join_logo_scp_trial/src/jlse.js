@@ -100,21 +100,19 @@ const main = async () => {
   const createOutAvs = require("./output/avs").create;
   const createChapter = require("./output/chapter_jls").create;
   const encode = require("./command/ffmpeg").exec;
-  const { INPUT_AVS, 
-          OUTPUT_AVS_CUT, 
-          OUTPUT_FILTER_CUT, 
+  const { INPUT_AVS,
+          OUTPUT_AVS_CUT,
+          OUTPUT_FILTER_CUT,
           SAVE_DIR,
           TSDIVIDER_OUTPUT
         } = settings;
   const channel = parseChannel(inputFile);
   const param = parseParam(channel, inputFileName);
   let avsFile = createAvs(INPUT_AVS, inputFile, 1);
-  if(param.use_tssplit == 1){
-    console.log("TS spliting ...");
-    tsdivider(inputFile);
-    console.log("TS split done");
-    avsFile = createAvs(INPUT_AVS, TSDIVIDER_OUTPUT, -1);
-  };
+  console.log("TS spliting ...");
+  tsdivider(inputFile);
+  console.log("TS split done");
+  avsFile = createAvs(INPUT_AVS, TSDIVIDER_OUTPUT, -1);
 
   await chapterexe(avsFile);
   await logoframe(param, channel, avsFile);
