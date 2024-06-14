@@ -1,63 +1,56 @@
-# JoinLogoScpTrialSet for Linux and Avisynth+3.5.x
+# JoinLogoScpTrialSet for Linux and Avisynth+3.7.x
 
 ## 概要
 
 [sogaani][1]氏が移植された[Linux対応版join_logo_scp][2]を元に改造し  
-Native Linuxに対応した[AviSynth+][3][3.5.x][4]で動作できるようにしたもののセット。  
+Native Linux に対応した[AviSynth+ 3.7.x][3]で動作できるようにしたもののセット。  
 DockerとDocker-composeを用いて動作させます。  
 
 [1]:https://github.com/sogaani
 [2]:https://github.com/sogaani/JoinLogoScp
 [3]:https://github.com/AviSynth/AviSynthPlus
-[4]:https://github.com/AviSynth/AviSynthPlus/releases/
 
-### 確認環境
+### フォークによる改造
 
-同梱している Docker 環境にて動作を確認しました。  
+- [x] [yobibi/join_logo_scp at v5.1.0](https://github.com/yobibi/join_logo_scp/tree/v5.1.0) への対応
+- [x] 常に `tsdivider` を実行して前後の番組をトリムするように変更
+- [x] EPGStation から  `-c` 放送局名(`CHNNELNAME`)取得する事でロゴ検索を高速化<br>`-1` などの末尾数字は最も大きい物を利用するため世代管理でも問題ありません。<br>これにより Amatsukaze で生成されたロゴデータをそのまま利用出来ます。
+- [ ] 弊宅で動作が確認出来た, Dockerfile を追加しました
+  - [ ] Ubuntu 22.04
+  - [ ] nvidia/cuda:12.5.0 ベース
 
 ## 動作確認用環境セットアップ方法
 
-このセットアップにはDockerとDocker-composeが必要です。  
-ローカルにインストールしたい場合はDockerファイルを読んで手順をなぞってください。  
-あくまで、動作確認用ですので使い込みたい方は自前でDockerfileを作成することや、他のDockerfileに組み込むことを検討してください。
+このセットアップには Docker が必要です。  
+あくまで、動作確認用ですので使い込みたい方は自前で Dockerfile を作成することや、他の Dockerfile に組み込むことを検討してください。
 初回は次の通りに実行します。
 
 ```bash
-git clone --recursive https://github.com/naa0yama/JoinLogoScpTrialSetLinux.git
+git clone https://github.com/naa0yama/JoinLogoScpTrialSetLinux.git
 cd JoinLogoScpTrialSetLinux
-cp -r modules/join_logo_scp_trial/JL .
-cp -r modules/join_logo_scp_trial/setting .
-cp -r modules/join_logo_scp_trial/src .
-docker-compose up --build
 
-```
+docker pull ghcr.io/naa0yama/joinlogoscptrialsetlinux:latest
 
-[docker-avisynthplus](https://github.com/users/tobitti0/packages/container/package/docker-avisynthplus)をベースイメージとして使用します。
-ある程度のFFmpegが使用できると思います。
+docker run --user $(id -u):$(id -g) --rm -it \
+  -v $PWD/videos/source:/source \
+  -v $PWD/videos/dist:/dist \
+  -v $PWD/modules/join_logo_scp_trial/JL:/join_logo_scp_trial/JL \
+  -v $PWD/modules/join_logo_scp_trial/logo:/join_logo_scp_trial/logo \
+  -v $PWD/modules/join_logo_scp_trial/result:/join_logo_scp_trial/result \
+  -v $PWD/modules/join_logo_scp_trial/setting:/join_logo_scp_trial/setting \
+  -v $PWD/modules/join_logo_scp_trial/src:/join_logo_scp_trial/src \
+  ghcr.io/naa0yama/joinlogoscptrialsetlinux:latest /bin/bash
 
-次のログが出たら完了です。  
 
-```bash
-Successfully tagged join_logo_scp_trial:latest
-Recreating join_logo_scp_trial ... done
-Attaching to join_logo_scp_trial
-join_logo_scp_trial    |
-join_logo_scp_trial    | > join_logo_scp_trial@1.0.0 start /join_logo_scp_trial
-join_logo_scp_trial    | > node src/jlse.js "-i" "--help"
-join_logo_scp_trial    |
-join_logo_scp_trial    | Options:
-join_logo_scp_trial    |   --version      Show version number                                   [boolean]
-join_logo_scp_trial    |   --input, -i    path to ts file                             [string] [required]
-join_logo_scp_trial    |   --filter, -f   enable to ffmpeg filter output       [boolean] [default: false]
-join_logo_scp_trial    |   --encode, -e   enable to ffmpeg encode              [boolean] [default: false]
-join_logo_scp_trial    |   --target, -t   select encord target
-join_logo_scp_trial    |                         [choices: "cutcm", "cutcm_logo"] [default: "cutcm_logo"]
-join_logo_scp_trial    |   --option, -o   set ffmpeg option                        [string] [default: ""]
-join_logo_scp_trial    |   --outdir, -d   set encorded file dir                    [string] [default: ""]
-join_logo_scp_trial    |   --outname, -n  set encorded file name                   [string] [default: ""]
-join_logo_scp_trial    |   --remove, -r   remove avs files                     [boolean] [default: false]
-join_logo_scp_trial    |   --help         Show help                                             [boolean]
-join_logo_scp_trial exited with code 0
+docker run --user $(id -u):$(id -g) --rm -it \
+  -v $PWD/videos/source:/source \
+  -v $PWD/videos/dist:/dist \
+  -v $PWD/modules/join_logo_scp_trial/JL:/join_logo_scp_trial/JL \
+  -v $PWD/modules/join_logo_scp_trial/logo:/join_logo_scp_trial/logo \
+  -v $PWD/modules/join_logo_scp_trial/result:/join_logo_scp_trial/result \
+  -v $PWD/modules/join_logo_scp_trial/setting:/join_logo_scp_trial/setting \
+  -v $PWD/modules/join_logo_scp_trial/src:/join_logo_scp_trial/src \
+  tmp-my bash
 
 ```
 
@@ -65,18 +58,19 @@ logoフォルダが生成されていると思うので、そこにロゴデー�
 
 ## 使用方法
 
-docker-compose.ymlのある場所で、次のコマンドを入力して実行します。
+- ソースになる ts ファイルを `videos/source` に配置します。
+
+上記の `docker run --user $(id -u):$(id -g) --rm -it` でログインした Bash 上で下記 find コマンドを実行すれば  
+`videos/source` 内のファイルを順番に処理し libx264 でエンコードされたファイルが出来ると思います。
 
 ```bash
-docker-compose run --rm -v 「TSファイルのフォルダの絶対パス」:/ts \
-                            join_logo_scp_trial /ts/「TSファイルの名前（拡張子含む）
+find /source -type f -name '*.ts' -exec env INPUT="{}" \
+  jlse --input "{}" \
+  --encode --option ' -ignore_unknown -vf yadif -map 0:v -aspect 16:9 -c:v libx264 -preset veryfast -movflags faststart -f mp4 -map 0:a -c:a aac -bsf:a aac_adtstoasc' \;
+
 ```
 
-(上のは見やすくするために改行してますが、別に一行でもいいです。）  
-
-例:~/record/ts/局名_タイトル第1話.tsを解析する場合  
-`docker-compose run --rm -v ~/record/ts:/ts join_logo_scp_trial /ts/局名_タイトル第1話.ts`  
-resultフォルダの中のファイル名のフォルダに解析結果と、カット用のavsが保存されます。  
+`modules/join_logo_scp_trial/result` フォルダの中のファイル名のフォルダに解析結果と、カット用の avs が保存されます。  
 join_logo_scp_trialの詳しい使用方法は、[こちら][5]を確認してください。
 
 [5]:https://github.com/tobitti0/join_logo_scp_trial/blob/master/README.md
@@ -122,20 +116,21 @@ Linuxに移植されたsogaani氏、ツール群をユースケースと一緒�
 本レポジトリに含むライセンスは下記の通りです。  
 本レポジトリは GPL-3.0 とし、オリジナルの部分は下記表のとおりとします。
 
-| Source                                   | License         |
-| :--------------------------------------- | :-------------- |
-| [tobitti0/JoinLogoScpTrialSetLinux][7]   | Unknown         |
-| [tobitti0/chapter_exe][8]                | GPL-2.0 license |
-| [tobitti0/join_logo_scp][9]              | GPL-2.0 license |
-| [tobitti0/join_logo_scp_trial][10]       | Unknown         |
-| [tobitti0/logoframe][11]                 | GPL-2.0 license |
-| [tobitti0/tsdivider][12]                 | GPL-3.0 license |
-| [tobitti0/delogo-AviSynthPlus-Linux][13] | GPL-2.0 license |
+| Source                                                                   | License         |
+| :----------------------------------------------------------------------- | :-------------- |
+| [tobitti0/JoinLogoScpTrialSetLinux][7]                                   | Unknown         |
+| [tobitti0/chapter_exe][8]                                                | GPL-2.0 license |
+| [yobibi/join_logo_scp][9]                                                | GPL-2.0 license |
+| [tobitti0/join_logo_scp_trial][10]<br>[Till0196/join_logo_scp_trial][14] | Unknown         |
+| [tobitti0/logoframe][11]                                                 | GPL-2.0 license |
+| [tobitti0/tsdivider][12]                                                 | GPL-3.0 license |
+| [tobitti0/delogo-AviSynthPlus-Linux][13]                                 | GPL-2.0 license |
 
 [7]:https://tobitti.net/blog/Ubuntu-EPGStation-JoinLogoScpTrial/
 [8]:https://github.com/tobitti0/chapter_exe
-[9]:https://github.com/tobitti0/join_logo_scp
+[9]:https://github.com/yobibi/join_logo_scp
 [10]:https://github.com/tobitti0/join_logo_scp_trial
 [11]:https://github.com/tobitti0/logoframe
 [12]:https://github.com/tobitti0/tsdivider
 [13]:https://github.com/tobitti0/delogo-AviSynthPlus-Linux
+[14]:https://github.com/Till0196/join_logo_scp_trial
