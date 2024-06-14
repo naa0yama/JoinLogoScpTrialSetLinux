@@ -14,6 +14,12 @@ const argv = require("yargs")
     default: false,
     describe: "enable to ffmpeg filter output"
   })
+  .option("channel", {
+    alias: "c",
+    type: "string",
+    default: "",
+    describe: "set channel name (ex. TOKYO MX1)"
+  })
   .option("encode", {
     alias: "e",
     type: "boolean",
@@ -56,8 +62,8 @@ const argv = require("yargs")
   )
   .check(function(argv) {
     const ext = path.extname(argv.input);
-    if (ext !== ".ts") {
-      console.error(`invalid file extension ${ext}.`);
+    if (ext !== ".ts" && ext !== ".m2ts") {
+      console.error(`Invalid file extension ${ext}. Only .ts and .m2ts files are allowed.`);
       return false;
     }
 
@@ -100,21 +106,19 @@ const main = async () => {
   const createOutAvs = require("./output/avs").create;
   const createChapter = require("./output/chapter_jls").create;
   const encode = require("./command/ffmpeg").exec;
-  const { INPUT_AVS, 
-          OUTPUT_AVS_CUT, 
-          OUTPUT_FILTER_CUT, 
+  const { INPUT_AVS,
+          OUTPUT_AVS_CUT,
+          OUTPUT_FILTER_CUT,
           SAVE_DIR,
           TSDIVIDER_OUTPUT
         } = settings;
-  const channel = parseChannel(inputFile);
+  const channel = argv.channel !== undefined ? parseChannel(inputFile, argv.channel) : parseChannel(inputFile, "");
   const param = parseParam(channel, inputFileName);
   let avsFile = createAvs(INPUT_AVS, inputFile, 1);
-  if(param.use_tssplit == 1){
-    console.log("TS spliting ...");
-    tsdivider(inputFile);
-    console.log("TS split done");
-    avsFile = createAvs(INPUT_AVS, TSDIVIDER_OUTPUT, -1);
-  };
+  console.log("TS spliting ...");
+  tsdivider(inputFile);
+  console.log("TS split done");
+  avsFile = createAvs(INPUT_AVS, TSDIVIDER_OUTPUT, -1);
 
   await chapterexe(avsFile);
   await logoframe(param, channel, avsFile);
