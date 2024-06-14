@@ -19,16 +19,37 @@ const getLogo = logoName => {
   if (fs.existsSync(logo)) {
     return logo;
   }
+
+  // Amatsukaze の SID103-1.lgd のようなロゴファイル名に対応
+  // SID103-1.lgd, SID103-2.lgd, ... のように番号が付いている場合、最大の番号のファイルを選択
+  if (logoName.startsWith("SID")) {
+    let maxNumber = 0;
+    const logoFiles = fs.readdirSync(LOGO_PATH);
+    for (const file of logoFiles) {
+      if (file.startsWith(`${logoName}-`)) {
+        const number = parseInt(file.split("-")[1]);
+        if (number > maxNumber) {
+          maxNumber = number;
+        }
+      }
+    }
+    if (maxNumber > 0) {
+      logo = path.join(LOGO_PATH, `${logoName}-${maxNumber}.lgd`)
+      return logo;
+    }
+  }
+
   return null;
 };
 
 const selectLogo = channel => {
   if (!channel) {
     console.log('放送局はファイル名から検出できませんでした');
-  }else{
+  } else {
     console.log(`放送局：${channel["short"]}`);
-    for (key of ["install", "short", "recognize"]) {
-      const logo = getLogo(channel[key]);
+    for (key of ["install", "short", "recognize", "serviceid"]) {
+      let logoKey = key === "serviceid" ? "SID" + channel[key] : channel[key];
+      const logo = getLogo(logoKey);
       if (logo) {
         return logo;
       }
