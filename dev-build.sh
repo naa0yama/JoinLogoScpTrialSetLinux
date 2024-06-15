@@ -13,9 +13,9 @@ fi
 time docker build -t "tmp-${DOCKER_TAG}" -f "Dockerfile.${DOCKER_TAG}" .
 
 if [ "${DOCKER_ROOT}" == "yes" ]; then
-  DOCKER_OPTS="--user $(id -u):$(id -g)"
-else
   DOCKER_OPTS=""
+else
+  DOCKER_OPTS="--user $(id -u):$(id -g)"
 fi
 
 time docker run ${DOCKER_OPTS} --rm -it \
