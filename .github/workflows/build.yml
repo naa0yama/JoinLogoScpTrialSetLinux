@@ -48,7 +48,7 @@ jobs:
       - uses: docker/metadata-action@v5
         id: meta
         with:
-          images: ghcr.io/join_logo_scp_trial
+          images: ghcr.io/naa0yama/join_logo_scp_trial
           tags: |
             # minimal (short sha)
             type=ref,enable=true,event=pr,prefix=,suffix=-${{ matrix.type }}
