@@ -54,8 +54,7 @@ jobs:
         with:
           images: ghcr.io/naa0yama/join_logo_scp_trial
           tags: |
-            type=semver,enable=true,prefix=,suffix=-${{ matrix.type }},pattern={{version}}
-            type=semver,enable=true,prefix=,suffix=-${{ matrix.type }},pattern={{major}}.{{minor}}
+            type=ref,event=tag,enable=true,prefix=,suffix=-${{ matrix.type }}
 
             # minimal (short sha)
             type=sha,enable=true,prefix=,suffix=-${{ matrix.type }},format=short

@@ -1,3 +1,4 @@
+# syntax=docker/dockerfile:1
 #- -------------------------------------------------------------------------------------------------
 #- Global
 #-
@@ -674,3 +675,5 @@ WORKDIR "/join_logo_scp_trial"
 
 ENTRYPOINT [ "/bin/bash", "-c" ]
 CMD [ "" ]
+
+# vim: set filetype=dockerfile:
