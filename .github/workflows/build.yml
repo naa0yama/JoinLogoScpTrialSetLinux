@@ -57,7 +57,7 @@ jobs:
             latest=false
             suffix=-${{ matrix.type }}
           tags: |
-            type=ref,event=tag,prefix=,enable=true
+            type=ref,event=tag,prefix=,enable={{is_default_branch}}
 
             # minimal (short sha)
             type=sha,enable=true,prefix=,format=short
