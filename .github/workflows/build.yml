@@ -5,6 +5,8 @@ on:
   push:
     branches-ignore:
       - main
+    tags:
+      - 'v*'
   pull_request:
     branches:
       - main
@@ -14,6 +16,8 @@ on:
       - reopened
       - synchronize
       - auto_merge_enabled
+  schedule:
+    - cron: '00 02 1 * *'
   workflow_dispatch:
     inputs:
       rebuild:
@@ -53,6 +57,9 @@ jobs:
             # minimal (short sha)
             type=ref,enable=true,event=pr,prefix=,suffix=-${{ matrix.type }}
             type=sha,enable=true,priority=100,prefix=,suffix=-${{ matrix.type }},format=short
+
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
 
             # handlebars with timezone
             type=schedule,prefix=,suffix=${{ matrix.type }},pattern={{date 'YYYYMMDD' tz='Asia/Tokyo'}}
