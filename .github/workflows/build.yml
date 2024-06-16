@@ -27,10 +27,16 @@ on:
 
 jobs:
   builds:
-    name: Container
+    name: Container ${{ matrix.type }}
     #if: ${{ contains(fromJson('["renovate/", "dev/","revert"]'), github.head_ref) }} || ${{ contains(fromJson('["renovate/", "dev/","revert"]'), github.ref_name) }} || ${{ inputs.rebuild == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 40
+    strategy:
+      max-parallel: 5
+      matrix:
+        type:
+          - nvenc
+          - ubuntu2204
     permissions:
       contents: read
       packages: write
@@ -42,7 +48,7 @@ jobs:
       - uses: docker/metadata-action@v5
         id: meta
         with:
-          images: ghcr.io/${{ github.repository }}
+          images: ghcr.io/${{ github.repository }}/${{ matrix.type }}
           tags: |
             # set latest tag for default branch
             type=raw,value=latest,enable={{is_default_branch}}
@@ -63,7 +69,7 @@ jobs:
       - name: Build and push
         uses: docker/build-push-action@v5.0.0
         with:
-          context: .
+          context: Dockerfile.${{ matrix.type }}
           push: true # ${{ contains( github.event.pull_request.merged, true ) || inputs.rebuild == 'true' }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
