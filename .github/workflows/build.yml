@@ -54,6 +54,9 @@ jobs:
         with:
           images: ghcr.io/naa0yama/join_logo_scp_trial
           tags: |
+            # set latest tag for master branch
+            type=raw,value=latest,enable=${{ matrix.type == 'ubuntu2204' }}
+
             type=ref,event=tag,enable=true,prefix=,suffix=-${{ matrix.type }}
 
             # minimal (short sha)
