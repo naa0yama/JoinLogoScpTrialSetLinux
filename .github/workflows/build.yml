@@ -53,14 +53,18 @@ jobs:
         id: meta
         with:
           images: ghcr.io/naa0yama/join_logo_scp_trial
+          flavor: |
+            latest=false
+            prefix=
+            suffix=-${{ matrix.type }}
           tags: |
             # set latest tag for master branch
             type=raw,value=latest,enable=${{ matrix.type == 'ubuntu2204' }}
 
-            type=ref,event=tag,enable=true,prefix=,suffix=-${{ matrix.type }}
+            type=ref,event=tag,enable=true
 
             # minimal (short sha)
-            type=sha,enable=true,prefix=,suffix=-${{ matrix.type }},format=short
+            type=sha,enable=true,format=short
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
