@@ -69,7 +69,8 @@ jobs:
       - name: Build and push
         uses: docker/build-push-action@v5.0.0
         with:
-          context: Dockerfile.${{ matrix.type }}
+          context: .
+          file: Dockerfile.${{ matrix.type }}
           push: true # ${{ contains( github.event.pull_request.merged, true ) || inputs.rebuild == 'true' }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
