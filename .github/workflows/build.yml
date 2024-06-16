@@ -56,13 +56,10 @@ jobs:
           tags: |
             # minimal (short sha)
             type=ref,enable=true,event=pr,prefix=,suffix=-${{ matrix.type }}
-            type=sha,enable=true,priority=100,prefix=,suffix=-${{ matrix.type }},format=short
+            type=sha,enable=true,prefix=,suffix=-${{ matrix.type }},format=short
 
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
-
-            # handlebars with timezone
-            type=schedule,prefix=,suffix=${{ matrix.type }},pattern={{date 'YYYYMMDD' tz='Asia/Tokyo'}}
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
