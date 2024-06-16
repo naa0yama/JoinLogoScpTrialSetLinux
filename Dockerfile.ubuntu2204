@@ -51,8 +51,8 @@ RUN set -eux && \
     wget && \
     \
     # Cleanup \
-    apt -y autoremove && \
-    apt -y clean && \
+    apt-get -y autoremove && \
+    apt-get -y clean && \
     rm -rf /var/lib/apt/lists/*
 
 ## Nodejs setup
@@ -63,8 +63,8 @@ RUN set -eux && \
     nodejs &&\
     \
     # Cleanup \
-    apt -y autoremove && \
-    apt -y clean && \
+    apt-get -y autoremove && \
+    apt-get -y clean && \
     rm -rf /var/lib/apt/lists/*
 
 ## Nodejs setup
@@ -139,8 +139,8 @@ RUN set -eux && \
     zlib1g-dev && \
     \
     # Cleanup \
-    apt -y autoremove && \
-    apt -y clean && \
+    apt-get -y autoremove && \
+    apt-get -y clean && \
     rm -rf /var/lib/apt/lists/*
 
 ## AviSynth+
@@ -636,8 +636,8 @@ COPY --from=build-ffmpeg /usr/local/lib/avisynth    /usr/local/lib/avisynth
 #    $(cat /ffmpeg_runtime.txt) && \
 #    \
 #    # Cleanup \
-#    apt -y autoremove && \
-#    apt -y clean && \
+#    apt-get -y autoremove && \
+#    apt-get -y clean && \
 #    rm -rf /var/lib/apt/lists/*
 
 ## check FFmpeg exec
@@ -662,8 +662,8 @@ RUN set -eux && \
     libboost-system-dev && \
     \
     # Cleanup \
-    apt -y autoremove && \
-    apt -y clean && \
+    apt-get -y autoremove && \
+    apt-get -y clean && \
     rm -rf /var/lib/apt/lists/* && \
     npm config set cache /tmp --global
 
