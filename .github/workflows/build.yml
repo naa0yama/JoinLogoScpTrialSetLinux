@@ -57,9 +57,6 @@ jobs:
             latest=false
             suffix=-${{ matrix.type }}
           tags: |
-            # set latest tag for master branch
-            type=raw,value=latest,prefix=,enable=${{ matrix.type == 'ubuntu2204' }}
-
             type=ref,event=tag,prefix=,enable=true
 
             # minimal (short sha)
