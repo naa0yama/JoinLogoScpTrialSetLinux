@@ -320,6 +320,7 @@ RUN set -eux && \
     cp -av "${PREFIX}/src/JLSTSL/modules/join_logo_scp/JL" /join_logo_scp_trial/ && \
     test -f /join_logo_scp_trial/JL/data/ChList.csv && \
     \
+    cd /join_logo_scp_trial && \
     npm link
 
 # Archive source code
