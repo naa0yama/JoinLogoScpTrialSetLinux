@@ -24,7 +24,6 @@ time docker run ${DOCKER_OPTS} --rm -it --gpus all \
   -v $PWD/modules/join_logo_scp_trial/JL:/join_logo_scp_trial/JL \
   -v $PWD/modules/join_logo_scp_trial/logo:/join_logo_scp_trial/logo \
   -v $PWD/modules/join_logo_scp_trial/result:/join_logo_scp_trial/result \
-  -v $PWD/modules/join_logo_scp_trial/setting:/join_logo_scp_trial/setting \
   -v $PWD/modules/join_logo_scp_trial/src:/join_logo_scp_trial/src \
   --device "/dev/dri:/dev/dri" \
   "tmp-${DOCKER_TAG}" bash

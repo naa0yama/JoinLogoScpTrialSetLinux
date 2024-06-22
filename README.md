@@ -14,7 +14,9 @@ DockerとDocker-composeを用いて動作させます。
 
 - [x] [yobibi/join_logo_scp at v5.1.0](https://github.com/yobibi/join_logo_scp/tree/v5.1.0) への対応
 - [x] 常に `tsdivider` を実行して前後の番組をトリムするように変更
-- [x] EPGStation から  `-c` 放送局名(`CHNNELNAME`)取得する事でロゴ検索を高速化<br>`-1` などの末尾数字は最も大きい物を利用するため世代管理でも問題ありません。<br>これにより Amatsukaze で生成されたロゴデータをそのまま利用出来ます。
+- [x] `-c` フラグを立てると EPGStation の放送局名(`CHNNELNAME`)を取得する事でロゴ検索を高速化
+  - [x] `-1` などの末尾数字は最も大きい物を利用するため世代管理でも問題ありません。
+  - [x] これにより Amatsukaze で生成されたロゴデータをそのまま利用出来ます。
 - [x] L-SMASH-Works の対応がどうも FFmpeg 6.1.1 までの様子のため modules 郡用の FFmpeg は 6.1.1 を、エンコード用はFFmpeg 7.x となるようにしています。そのため FFmpeg 6.1.1 の `ffmpeg` コマンド自体は生成していません。
 - [x] 弊宅で動作が確認出来た, Dockerfile を追加しました
   - [x] Ubuntu 22.04

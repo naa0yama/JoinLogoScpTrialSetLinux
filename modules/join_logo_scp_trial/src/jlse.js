@@ -22,9 +22,9 @@ const argv = require("yargs")
   })
   .option("channel", {
     alias: "c",
-    type: "string",
-    default: "",
-    describe: "set channel name (ex. TOKYO MX1)"
+    type: "boolean",
+    default: false,
+    describe: "The channel name is taken from the environment variable (CHNNELNAME)"
   })
   .option("encode", {
     alias: "e",
@@ -117,8 +117,9 @@ const main = async () => {
           OUTPUT_FILTER_CUT,
           SAVE_DIR,
           TSDIVIDER_OUTPUT
-        } = settings;
-  const channel = argv.channel !== undefined ? parseChannel(inputFile, argv.channel) : parseChannel(inputFile, "");
+  } = settings;
+  const channel_name = process.env.CHNNELNAME !== undefined ? process.env.CHNNELNAME : ''
+  const channel = argv.channel ? parseChannel(inputFile, channel_name) : parseChannel(inputFile, "");
   const param = parseParam(channel, inputFileName);
   let avsFile = createAvs(INPUT_AVS, inputFile, 1);
   console.log("TS spliting ...");
