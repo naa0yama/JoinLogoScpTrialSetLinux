@@ -788,7 +788,8 @@ RUN set -eux && \
     apt-get -y autoremove && \
     apt-get -y clean && \
     rm -rf /var/lib/apt/lists/* && \
-    npm config set cache /tmp --global
+    npm link && \
+    jlse --help
 
 COPY --from=build-modules /join_logo_scp_trial      /join_logo_scp_trial
 COPY --from=build-modules /opt/modules              /opt/modules
