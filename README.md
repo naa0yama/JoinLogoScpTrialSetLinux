@@ -19,6 +19,7 @@ DockerとDocker-composeを用いて動作させます。
 - [x] 弊宅で動作が確認出来た, Dockerfile を追加しました
   - [x] Ubuntu 22.04
   - [x] nvidia/cuda:12.5.0 ベース
+- [x] `--addchapter` CMカット後のチャプターを追加するオプション追加
 
 ## 動作確認用環境セットアップ方法
 

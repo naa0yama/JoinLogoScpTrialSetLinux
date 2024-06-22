@@ -14,6 +14,12 @@ const argv = require("yargs")
     default: false,
     describe: "enable to ffmpeg filter output"
   })
+  .option("addchapter", {
+    alias: "ac",
+    type: "boolean",
+    default: false,
+    describe: "Add encode file in chapter"
+  })
   .option("channel", {
     alias: "c",
     type: "string",
@@ -130,7 +136,7 @@ const main = async () => {
   if(argv.filter) {createFilter(inputFile, OUTPUT_AVS_CUT, OUTPUT_FILTER_CUT); }
 
   if(argv.encode) {
-    encode(argv.outdir? argv.outdir : inputFileDir, argv.outname? argv.outname : inputFileName, argv.target, argv.option);
+    encode(argv.outdir? argv.outdir : inputFileDir, argv.outname? argv.outname : inputFileName, argv.target, argv.option, argv.addchapter);
   }
   if(argv.remove) {
     fs.removeSync(SAVE_DIR);
