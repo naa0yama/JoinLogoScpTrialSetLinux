@@ -36,7 +36,7 @@ ARG NVIDIA_DRIVER_CAPABILITIES=compute,video,utility
 #- -------------------------------------------------------------------------------------------------
 #- Builder
 #-
-FROM ubuntu:jammy as base
+FROM ubuntu:jammy AS base
 # ARG は、利用する各ステージごとに宣言する必要がある。
 ARG DEBIAN_FRONTEND
 ARG DEBCONF_NOWARNINGS
@@ -87,7 +87,7 @@ RUN set -eux && \
 #- -------------------------------------------------------------------------------------------------
 #- Build modules
 #-
-FROM base as build-modules
+FROM base AS build-modules
 # ARG は、利用する各ステージごとに宣言する必要がある。
 ARG DEBCONF_NOWARNINGS
 ARG DEBIAN_FRONTEND
@@ -342,7 +342,7 @@ CMD [ "" ]
 #- -------------------------------------------------------------------------------------------------
 #- Build ffmpeg
 #-
-FROM nvidia/cuda:${NVIDIA_CUDA_VER}-devel-ubuntu22.04 as build-ffmpeg
+FROM nvidia/cuda:${NVIDIA_CUDA_VER}-devel-ubuntu22.04 AS build-ffmpeg
 # ARG は、利用する各ステージごとに宣言する必要がある。
 ARG DEBCONF_NOWARNINGS
 ARG DEBIAN_FRONTEND
@@ -379,8 +379,8 @@ ARG FFMPEG_URL="https://ffmpeg.org/releases/ffmpeg-${FFMPEG_VERSION}.tar.bz2"
 # NVIDIA
 ARG NVIDIA_VISIBLE_DEVICES
 ARG NVIDIA_DRIVER_CAPABILITIES
-ENV LD_LIBRARY_PATH "/usr/local/cuda/compat:/usr/local/cuda/lib64:$LD_LIBRARY_PATH"
-ENV PATH "/usr/local/cuda/bin:$PATH"
+ENV LD_LIBRARY_PATH="/usr/local/cuda/compat:/usr/local/cuda/lib64:${LD_LIBRARY_PATH}"
+ENV PATH="/usr/local/cuda/bin:${PATH}"
 
 ## https://docs.nvidia.com/cuda/cuda-compiler-driver-nvcc/index.html#virtual-architecture-feature-list
 ARG CUDA_CC="70 72 75 80 86 87 89 90 90a"
@@ -701,7 +701,7 @@ RUN set -eux && \
 #- -------------------------------------------------------------------------------------------------
 #- Runner
 #-
-FROM base as runner
+FROM base AS runner
 # ARG は、利用する各ステージごとに宣言する必要がある。
 ARG DEBCONF_NOWARNINGS
 ARG DEBIAN_FRONTEND
