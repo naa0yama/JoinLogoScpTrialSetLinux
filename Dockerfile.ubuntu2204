@@ -25,7 +25,7 @@ ARG WGET_OPTS="--retry-on-host-error --retry-on-http-error=429,500,502,503"
 #- -------------------------------------------------------------------------------------------------
 #- Builder
 #-
-FROM ubuntu:jammy as base
+FROM ubuntu:jammy AS base
 # ARG は、利用する各ステージごとに宣言する必要がある。
 ARG DEBIAN_FRONTEND
 ARG DEBCONF_NOWARNINGS
@@ -76,7 +76,7 @@ RUN set -eux && \
 #- -------------------------------------------------------------------------------------------------
 #- Build modules
 #-
-FROM base as build-modules
+FROM base AS build-modules
 # ARG は、利用する各ステージごとに宣言する必要がある。
 ARG DEBCONF_NOWARNINGS
 ARG DEBIAN_FRONTEND
@@ -330,7 +330,7 @@ CMD [ "" ]
 #- -------------------------------------------------------------------------------------------------
 #- Build ffmpeg
 #-
-FROM base as build-ffmpeg
+FROM base AS build-ffmpeg
 # ARG は、利用する各ステージごとに宣言する必要がある。
 ARG DEBCONF_NOWARNINGS
 ARG DEBIAN_FRONTEND
@@ -615,7 +615,7 @@ RUN set -eux && \
 #- -------------------------------------------------------------------------------------------------
 #- Runner
 #-
-FROM base as runner
+FROM base AS runner
 # ARG は、利用する各ステージごとに宣言する必要がある。
 ARG DEBCONF_NOWARNINGS
 ARG DEBIAN_FRONTEND
@@ -654,6 +654,10 @@ RUN set -eux && \
     for i in decoders encoders; do echo ${i}:; ffmpeg -hide_banner -${i} | \
     egrep -i "[x|h]264|[x|h]265|av1|cuvid|hevc|libmfx|nv[dec|enc]|qsv|vaapi|vp9"; done
 
+COPY --from=build-modules /join_logo_scp_trial      /join_logo_scp_trial
+COPY --from=build-modules /opt/modules              /opt/modules
+WORKDIR "/join_logo_scp_trial"
+
 # join_logo_scp
 RUN set -eux && \
     apt-get update && \
@@ -665,17 +669,12 @@ RUN set -eux && \
     # Cleanup \
     apt-get -y autoremove && \
     apt-get -y clean && \
-    rm -rf /var/lib/apt/lists/*
-
-COPY --from=build-modules /join_logo_scp_trial      /join_logo_scp_trial
-COPY --from=build-modules /opt/modules              /opt/modules
+    rm -rf /var/lib/apt/lists/* && \
+    npm link 
 
 # Link join_logo_scp
 RUN set -eux && \
-    npm link && \
     jlse --help
-
-WORKDIR "/join_logo_scp_trial"
 
 ENTRYPOINT [ "/bin/bash", "-c" ]
 CMD [ "" ]
