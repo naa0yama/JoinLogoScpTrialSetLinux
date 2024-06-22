@@ -326,6 +326,12 @@ RUN set -eux && \
     npm --version && \
     npm install --no-save --loglevel=info --omit=dev && \
     mv -v ${PREFIX}/src/JLSTSL/modules/join_logo_scp_trial /join_logo_scp_trial && \
+    \
+    # Copy JL directory
+    rm -rfv /join_logo_scp_trial/JL && \
+    cp -av "${PREFIX}/src/JLSTSL/modules/join_logo_scp/JL" /join_logo_scp_trial/ && \
+    test -f /join_logo_scp_trial/JL/data/ChList.csv && \
+    \
     cd /join_logo_scp_trial && \
     npm link
 
@@ -792,7 +798,7 @@ RUN set -eux && \
     apt-get -y autoremove && \
     apt-get -y clean && \
     rm -rf /var/lib/apt/lists/* && \
-    npm link 
+    npm link
 
 
 # Link join_logo_scp
