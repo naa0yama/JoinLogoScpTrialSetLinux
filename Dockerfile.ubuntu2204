@@ -665,12 +665,15 @@ RUN set -eux && \
     # Cleanup \
     apt-get -y autoremove && \
     apt-get -y clean && \
-    rm -rf /var/lib/apt/lists/* && \
-    npm link && \
-    jlse --help
+    rm -rf /var/lib/apt/lists/*
 
 COPY --from=build-modules /join_logo_scp_trial      /join_logo_scp_trial
 COPY --from=build-modules /opt/modules              /opt/modules
+
+# Link join_logo_scp
+RUN set -eux && \
+    npm link && \
+    jlse --help
 
 WORKDIR "/join_logo_scp_trial"
 
