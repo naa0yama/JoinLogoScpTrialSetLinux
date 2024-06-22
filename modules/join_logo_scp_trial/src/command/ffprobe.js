@@ -21,7 +21,8 @@ exports.getSampleRate = filename => {
 
 exports.getProperty = (stream, entries, filename) => {
   const args = [
-    "-v",
+    "-hide_banner",
+    "-loglevel",
     "error",
     "-select_streams",
     stream,
