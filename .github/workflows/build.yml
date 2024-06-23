@@ -3,9 +3,9 @@ name: Builds
 
 on:
   push:
-    branches-ignore:
-      - main
-      - dev/**
+  #   branches-ignore:
+  #     - main
+  #     - dev/**
     tags:
     - 'v*'
   pull_request:
@@ -48,7 +48,7 @@ jobs:
 
     steps:
       - name: Checkout from repository
-        uses: actions/checkout@v4.1.4
+        uses: actions/checkout@v4.1.7
 
       - uses: docker/metadata-action@v5
         id: meta
