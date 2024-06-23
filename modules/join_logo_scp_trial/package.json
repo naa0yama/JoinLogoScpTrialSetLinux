@@ -25,7 +25,6 @@
     "csv": "6.3.9",
     "fs-extra": "11.2.0",
     "jaconv": "1.0.4",
-    "uuid": "10.0.0",
     "yargs": "17.7.2"
   },
   "devDependencies": {
