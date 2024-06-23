@@ -22,11 +22,11 @@
   "homepage": "https://github.com/tobitti0/join_logo_scp_trial",
   "dependencies": {
     "async": "3.2.5",
-    "csv": "5.5.3",
-    "fs-extra": "9.1.0",
+    "csv": "6.3.9",
+    "fs-extra": "11.2.0",
     "jaconv": "1.0.4",
-    "uuid": "3.4.0",
-    "yargs": "15.4.1"
+    "uuid": "10.0.0",
+    "yargs": "17.7.2"
   },
   "devDependencies": {
     "eslint": "9.5.0",
