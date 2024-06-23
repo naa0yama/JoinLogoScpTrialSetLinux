@@ -22,6 +22,17 @@ ARG OBUPARSE_VERSION=478adcc872d5a8a19443e87910508e261a0a60ba
 # retry dns and some http codes that might be transient errors
 ARG WGET_OPTS="--retry-on-host-error --retry-on-http-error=429,500,502,503"
 
+# Ref: https://github.com/FFmpeg/nv-codec-headers/tags
+ARG NVIDIA_CODECSDK_VER=n12.2.72.0
+# Ref: https://hub.docker.com/r/nvidia/cuda
+ARG NVIDIA_CUDA_VER=12.5.0
+
+# dpkg -l 'nvidia-dkms-*'
+# nvidia-dkms-XXX が違うとエラーになるため確認して下記を変更する
+ARG NVIDIA_CUDA_DRIVERS_VERSION=555
+ARG NVIDIA_VISIBLE_DEVICES=all
+ARG NVIDIA_DRIVER_CAPABILITIES=compute,video,utility
+
 #- -------------------------------------------------------------------------------------------------
 #- Builder
 #-
@@ -110,7 +121,7 @@ ARG FFMPEG_VERSION=6.1.1
 ARG FFMPEG_URL="https://ffmpeg.org/releases/ffmpeg-${FFMPEG_VERSION}.tar.bz2"
 
 # Create directory
-RUN set -eux && mkdir -p "${PREFIX}" "${PREFIX}/src"
+RUN set -eux && mkdir -p "${PREFIX}" "${PREFIX}/lib/pkgconfig" "${PREFIX}/src"
 
 # Build Dependencies
 RUN set -eux && \
@@ -170,7 +181,7 @@ RUN set -eux && \
     curl -sfSL https://ffmpeg.org/ffmpeg-devel.asc | gpg --import && \
     gpg --verify ffmpeg.tar.bz2.asc ffmpeg.tar.bz2 && \
     \
-    tar -xf ffmpeg.tar.bz2 && \
+    tar xf ffmpeg.tar.bz2 && \
     cd ffmpeg-* && \
     ./configure \
     --disable-programs \
@@ -220,6 +231,7 @@ RUN set -eux && \
     --toolchain=hardened > ffmpeg_configure.log && \
     make -j$(nproc) && \
     make install && \
+    find . -type f -name '*.pc' -not -path '*doc/*' -exec cp -Lv '{}' ${PREFIX}/lib/pkgconfig \; && \
     make clean && \
     cd "${PREFIX}" && \
     mv -v ffmpeg* "${PREFIX}/src"
@@ -336,12 +348,15 @@ CMD [ "" ]
 #- -------------------------------------------------------------------------------------------------
 #- Build ffmpeg
 #-
-FROM base AS build-ffmpeg
+FROM nvidia/cuda:${NVIDIA_CUDA_VER}-devel-ubuntu22.04 AS build-ffmpeg
 # ARG は、利用する各ステージごとに宣言する必要がある。
 ARG DEBCONF_NOWARNINGS
 ARG DEBIAN_FRONTEND
 ARG PYTHONUNBUFFERED
 ARG WGET_OPTS
+
+ARG TZ
+ENV TZ=${TZ}
 
 ARG PREFIX="/opt/ffmpeg"
 ENV LD_LIBRARY_PATH="${PREFIX}/lib:/opt/modules/lib:/usr/local/lib"
@@ -367,12 +382,26 @@ ARG LSMASHWORKS_VERSION=1194.0.0.0
 ARG FFMPEG_VERSION=7.0.1
 ARG FFMPEG_URL="https://ffmpeg.org/releases/ffmpeg-${FFMPEG_VERSION}.tar.bz2"
 
+# NVIDIA
+ARG NVIDIA_VISIBLE_DEVICES
+ARG NVIDIA_DRIVER_CAPABILITIES
+ENV LD_LIBRARY_PATH="/usr/local/cuda/compat:/usr/local/cuda/lib64:${LD_LIBRARY_PATH}"
+ENV PATH="/usr/local/cuda/bin:${PATH}"
+
+## https://docs.nvidia.com/cuda/cuda-compiler-driver-nvcc/index.html#virtual-architecture-feature-list
+ARG CUDA_CC="70 72 75 80 86 87 89 90 90a"
+ARG NVIDIA_CODECSDK_VER
+ARG NVIDIA_CUDA_VER
+
+SHELL ["/bin/bash", "-c"]
+
 # Create directory
-RUN set -eux && mkdir -p "${PREFIX}" "${PREFIX}/src"
+RUN set -eux && mkdir -p "${PREFIX}" "${PREFIX}/lib/pkgconfig" "${PREFIX}/src"
 
 # Build Dependencies
 RUN set -eux && \
     apt-get update && \
+    apt-get -y upgrade && \
     apt-get -y install --no-install-recommends \
     apt-file \
     autoconf \
@@ -463,6 +492,19 @@ RUN set -eux && \
     cd "${PREFIX}" && \
     mv -v vmaf* "${PREFIX}/src"
 
+## NVIDIA Video Codec SDK
+RUN set -eux && \
+    cd "${PREFIX}" && \
+    git -C nv-codec-headers pull 2> /dev/null || \
+    git clone https://github.com/FFmpeg/nv-codec-headers -b ${NVIDIA_CODECSDK_VER} --depth 1 && \
+    cd nv-codec-headers && \
+    sed -i'' -e "s@PREFIX = /usr/local@PREFIX = ${PREFIX}@g" Makefile && \
+    make -j$(nproc) && \
+    make install && \
+    pkg-config --exists ffnvcodec && \
+    cd "${PREFIX}" && \
+    mv -v nv-codec-headers "${PREFIX}/src"
+
 ## AviSynth+
 RUN set -eux && \
     cd "${PREFIX}" && \
@@ -490,6 +532,10 @@ RUN set -eux && \
 # not cause collision in toolchain symbols, see comment in checkdupsym script for details.
 # Ref: https://github.com/wader/static-ffmpeg/blob/master/Dockerfile
 RUN set -eux && \
+    type nvcc && \
+    nvcc --version
+
+RUN set -eux && \
     cd "${PREFIX}" && \
     wget ${WGET_OPTS} -O ffmpeg.tar.bz2     "${FFMPEG_URL}" && \
     wget ${WGET_OPTS} -O ffmpeg.tar.bz2.asc "${FFMPEG_URL}.asc" && \
@@ -498,6 +544,12 @@ RUN set -eux && \
     \
     tar -xf ffmpeg.tar.bz2 && \
     cd ffmpeg-* && \
+    set +ux && \
+    ary=($(echo ${CUDA_CC})) && \
+    for i in $(seq 1 ${#ary[@]}); do gencode="-gencode arch=compute_${ary[$i-1]},code=sm_${ary[$i-1]} $gencode"; done && \
+    set -ux && \
+    CUDA_OPTION="${gencode} -O2" && \
+    sed -i -e 's/$nvccflags -ptx/$nvccflags/g' ./configure && \
     ./configure \
     # encoder & decoder
     --enable-avisynth \
@@ -517,6 +569,18 @@ RUN set -eux && \
     --enable-libx265 \
     --enable-opencl \
     --enable-vaapi \
+    \
+    # NVIDIA encoder & decoder
+    --enable-cuda-nvcc \
+    --enable-cuvid \
+    --enable-ffnvcodec \
+    --enable-libnpp \
+    --enable-nvdec \
+    --enable-nvenc \
+    --extra-cflags="-I/usr/local/cuda/include" \
+    --extra-ldflags="-L/usr/local/cuda/compat -L/usr/local/cuda/lib64" \
+    # CC指定フラグ追加 (https://github.com/NVIDIA/cuda-samples/issues/46#issuecomment-863835984)
+    --nvccflags="${CUDA_OPTION}" \
     \
     # License
     --enable-gpl \
@@ -540,7 +604,8 @@ RUN set -eux && \
     --toolchain=hardened > ffmpeg_configure.log && \
     make -j$(nproc) && \
     make install && \
-    make clean && \
+    find . -type f -name '*.pc' -not -path '*doc/*' -exec cp -Lv '{}' ${PREFIX}/lib/pkgconfig \; && \
+    # make clean && \
     cd "${PREFIX}" && \
     mv -v ffmpeg* "${PREFIX}/src"
 
@@ -559,6 +624,18 @@ RUN set -eux && \
     make clean && \
     cd "${PREFIX}" && \
     mv -v obuparse "${PREFIX}/src"
+RUN <<EOF
+cat <<- _DOC_ > ${PREFIX}/lib/pkgconfig/obuparse.pc
+prefix=${PREFIX}
+includedir=\${prefix}/include
+
+Name: obuparse
+Description: A simple and portable single file AV1 OBU parser.
+Version: ${OBUPARSE_VERSION}
+
+Cflags: -I\${includedir}
+_DOC_
+EOF
 
 ## l-smash
 RUN set -eux && \
@@ -594,6 +671,15 @@ RUN set -eux && \
     ninja -v -t clean && \
     cd "${PREFIX}" && \
     mv -v L-SMASH-Works "${PREFIX}/src"
+RUN <<EOF
+cat <<- _DOC_ > ${PREFIX}/lib/pkgconfig/liblsmashsource.pc
+Name: L-SMASH-Works
+Description: Note about LSMASHVideoSource and LibavSMASHSource.
+Version: ${LSMASHWORKS_VERSION}
+
+Libs: -L/usr/local/lib/avisynth
+_DOC_
+EOF
 
 ## FFmpeg runtime package list saved
 RUN set -eux && \
@@ -627,8 +713,44 @@ ARG DEBCONF_NOWARNINGS
 ARG DEBIAN_FRONTEND
 ARG PYTHONUNBUFFERED
 
+# NVIDIA
+ARG NVIDIA_VISIBLE_DEVICES
+ENV NVIDIA_VISIBLE_DEVICES=${NVIDIA_VISIBLE_DEVICES}
+ARG NVIDIA_DRIVER_CAPABILITIES
+ENV NVIDIA_DRIVER_CAPABILITIES=${NVIDIA_DRIVER_CAPABILITIES}
+
+# NVIDIA cuda
+ARG NVIDIA_CUDA_VER
+ARG NVIDIA_CUDA_DRIVERS_VERSION
+ENV NVIDIA_CUDA_DRIVERS_VERSION=${NVIDIA_CUDA_DRIVERS_VERSION}
+
 ENV LD_LIBRARY_PATH="/opt/ffmpeg/lib:/opt/modules/lib:/usr/local/lib"
 ENV PKG_CONFIG_PATH="/opt/ffmpeg/share/pkgconfig:/opt/ffmpeg/lib/pkgconfig:/opt/modules/lib/pkgconfig"
+
+## Intel Media SDK
+# RUN set -eux && \
+#     apt-get update && \
+#     apt-get install -y --no-install-recommends \
+#     intel-media-va-driver-non-free &&\
+#     apt-get clean && \
+#     rm -rf /var/lib/apt/lists/*
+
+# NVENC Video Encoding runtime library
+RUN set -eux && \
+    wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2204/x86_64/cuda-keyring_1.1-1_all.deb && \
+    dpkg -i cuda-keyring_1.1-1_all.deb && \
+    apt-get update && \
+    apt-get -y install --no-install-recommends \
+    libnpp-dev-$(echo ${NVIDIA_CUDA_VER%\.*} | tr '.' '-') \
+    libnvidia-decode-${NVIDIA_CUDA_DRIVERS_VERSION} \
+    libnvidia-encode-${NVIDIA_CUDA_DRIVERS_VERSION} \
+    ocl-icd-opencl-dev && \
+    \
+    # Cleanup \
+    apt-get -y autoremove && \
+    apt-get -y clean && \
+    rm -rf /var/lib/apt/lists/* && \
+    rm -f cuda-keyring_1.1-1_all.deb
 
 # FFmpeg runtime
 COPY --from=build-ffmpeg /usr/local/bin/ffmpeg      /usr/local/bin/ffmpeg
@@ -677,6 +799,7 @@ RUN set -eux && \
     apt-get -y clean && \
     rm -rf /var/lib/apt/lists/* && \
     npm link
+
 
 # Link join_logo_scp
 RUN set -eux && \

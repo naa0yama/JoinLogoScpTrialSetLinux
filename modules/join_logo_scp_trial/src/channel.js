@@ -12,7 +12,7 @@ exports.parse = (filepath, channelName) => {
     columns: ["recognize", "install", "short", "serviceid"]
   });
   const filename = jaconv.normalize(path.basename(filepath));
-  if (channelName!=="") {
+  if (channelName !== "") {
     channelName = jaconv.normalize(channelName);
   }
   let result = null;

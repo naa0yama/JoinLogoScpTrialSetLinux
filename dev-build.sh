@@ -13,17 +13,17 @@ fi
 time docker build -t "tmp-${DOCKER_TAG}" -f "Dockerfile.${DOCKER_TAG}" .
 
 if [ "${DOCKER_ROOT}" == "yes" ]; then
-  DOCKER_OPTS="--user $(id -u):$(id -g)"
-else
   DOCKER_OPTS=""
+else
+  DOCKER_OPTS="--user $(id -u):$(id -g)"
 fi
 
-time docker run ${DOCKER_OPTS} --rm -it \
+time docker run ${DOCKER_OPTS} --rm -it --gpus all \
   -v $PWD/videos/source:/source \
   -v $PWD/videos/dist:/dist \
   -v $PWD/modules/join_logo_scp_trial/JL:/join_logo_scp_trial/JL \
   -v $PWD/modules/join_logo_scp_trial/logo:/join_logo_scp_trial/logo \
   -v $PWD/modules/join_logo_scp_trial/result:/join_logo_scp_trial/result \
-  -v $PWD/modules/join_logo_scp_trial/setting:/join_logo_scp_trial/setting \
   -v $PWD/modules/join_logo_scp_trial/src:/join_logo_scp_trial/src \
+  --device "/dev/dri:/dev/dri" \
   "tmp-${DOCKER_TAG}" bash

@@ -14,11 +14,17 @@ const argv = require("yargs")
     default: false,
     describe: "enable to ffmpeg filter output"
   })
+  .option("addchapter", {
+    alias: "ac",
+    type: "boolean",
+    default: false,
+    describe: "Add encode file in chapter"
+  })
   .option("channel", {
     alias: "c",
-    type: "string",
-    default: "",
-    describe: "set channel name (ex. TOKYO MX1)"
+    type: "boolean",
+    default: false,
+    describe: "The channel name is taken from the environment variable (CHNNELNAME)"
   })
   .option("encode", {
     alias: "e",
@@ -111,8 +117,9 @@ const main = async () => {
           OUTPUT_FILTER_CUT,
           SAVE_DIR,
           TSDIVIDER_OUTPUT
-        } = settings;
-  const channel = argv.channel !== undefined ? parseChannel(inputFile, argv.channel) : parseChannel(inputFile, "");
+  } = settings;
+  const channel_name = process.env.CHNNELNAME !== undefined ? process.env.CHNNELNAME : ''
+  const channel = argv.channel ? parseChannel(inputFile, channel_name) : parseChannel(inputFile, "");
   const param = parseParam(channel, inputFileName);
   let avsFile = createAvs(INPUT_AVS, inputFile, 1);
   console.log("TS spliting ...");
@@ -130,7 +137,7 @@ const main = async () => {
   if(argv.filter) {createFilter(inputFile, OUTPUT_AVS_CUT, OUTPUT_FILTER_CUT); }
 
   if(argv.encode) {
-    encode(argv.outdir? argv.outdir : inputFileDir, argv.outname? argv.outname : inputFileName, argv.target, argv.option);
+    encode(argv.outdir? argv.outdir : inputFileDir, argv.outname? argv.outname : inputFileName, argv.target, argv.option, argv.addchapter);
   }
   if(argv.remove) {
     fs.removeSync(SAVE_DIR);

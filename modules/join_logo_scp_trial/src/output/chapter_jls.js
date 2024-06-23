@@ -2,7 +2,7 @@ const fs = require("fs-extra");
 const readline = require("readline");
 
 exports.create = async (settings) => {
-  const { OUTPUT_AVS_CUT, 
+  const { OUTPUT_AVS_CUT,
           JLSCP_OUTPUT,
           FILE_TXT_CPT_ORG,
           FILE_TXT_CPT_CUT,
@@ -10,7 +10,7 @@ exports.create = async (settings) => {
         } = settings;
   try {
     //前提ファイルの有無確認
-    if (!fs.existsSync(OUTPUT_AVS_CUT)||!fs.existsSync(JLSCP_OUTPUT)) { 
+    if (!fs.existsSync(OUTPUT_AVS_CUT)||!fs.existsSync(JLSCP_OUTPUT)) {
       process.exit(-1);
     }
     // Trimデータの読み込み
@@ -59,7 +59,7 @@ function TrimReader(file){
 // 構成解析ファイルとカット情報からCHAPTERを作成
 //  (input)
 //    trim:TRIMデータ
-//    file:obs_jlscpファイルパス    
+//    file:obs_jlscpファイルパス
 //  (output)
 //    ChapterCata:生成したCHAPTER
 //--------------------------------------------------
@@ -237,7 +237,7 @@ function OutputData(ChapterData, nCutType, file){
   const MODE_CUT = 1
   const MODE_TVT = 2
   const MODE_TVC = 3
-  
+
   const MSEC_DIVMIN = 100      //チャプター位置を同一としない時間間隔（msec単位）
   let i, inext;
   let bSkip;
@@ -310,7 +310,7 @@ function OutputData(ChapterData, nCutType, file){
             strName = ChapterData.m_strName[i];
           }
           //--- CHAPTER出力文字列設定 ---
-          m_strOutput += GetDispChapter(i, nCount, nSumTime, strName);
+          m_strOutput += GetDispChapter(nCount, nSumTime, strName);
         }
         //--- 書き込み後共通設定 ---
         nSumTime  = nSumTime + (ChapterData.m_nMSec[inext] - ChapterData.m_nMSec[i]);
@@ -331,9 +331,9 @@ function OutputData(ChapterData, nCutType, file){
   }else if (nCutType == MODE_TVC){
     m_strOutput = m_strOutput + "c";
   }
-  //console.log(m_strOutput);
+  // console.log(m_strOutput);
   //--- 結果出力 ---
-  fs.writeFile(file, m_strOutput, (err, data) => {
+  fs.writeFileSync(file, m_strOutput, (err, data) => {
     if(err) console.log(err);
   });
 }
@@ -476,16 +476,22 @@ function InsertFrame(chapterdata, nFrame, bCutOn, strName){
 
 //------------------------------------------------------------
 // CHAPTER表示用文字列を１個分作成（m_strOutputに格納）
-// num     : 格納chapter通し番号
 // nCount  : 出力用chapter番号
 // nTime   : 位置ミリ秒単位
 // strName : chapter名
 //------------------------------------------------------------
-function GetDispChapter(num, nCount, nTime, strName){
+function GetDispChapter(nCount, nTime, strName){
   let strBuf;
   let strCount, strTime;
   let strHour, strMin, strSec, strMsec;
   let nHour, nMin, nSec, nMsec;
+
+  //--- FFMETADATA1 ---
+  if (nCount == 1) {
+    strBuf = ';FFMETADATA1\n\n';
+  } else {
+    strBuf = '\n';
+  }
 
   //--- チャプター番号 ---
   strCount = String(nCount);
@@ -501,11 +507,14 @@ function GetDispChapter(num, nCount, nTime, strName){
   strMin = ('0' + nMin).slice(-2);
   strSec = ('0' + nSec).slice(-2);
   strMsec = ('00' + nMsec).slice(-3);
-  StrTime = strHour + ":" + strMin + ":" + strSec + "." + strMsec;
-  //--- 出力文字列（１行目） ---
-  strBuf = "CHAPTER" + strCount + "=" + StrTime + '\n';
-  //--- 出力文字列（２行目） ---
-  strBuf = strBuf + "CHAPTER" + strCount + "NAME=" + strName + '\n';
+  strTime = strHour + ":" + strMin + ":" + strSec + "." + strMsec;
+
+  //--- 出力文字列 ---
+  strBuf = strBuf + '[CHAPTER]\n';
+  strBuf = strBuf + "TIMEBASE=1/1000" + '\n';
+  strBuf = strBuf + "# " + strTime + '\n';
+  strBuf = strBuf + "START=" + parseInt(nTime) + '\n';
+  strBuf = strBuf + "END=" + parseInt(nTime + 1) + '\n';
+  strBuf = strBuf + "title=" + strName + '\n';
   return (strBuf);
 }
-
