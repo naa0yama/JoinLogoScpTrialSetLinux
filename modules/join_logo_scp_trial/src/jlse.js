@@ -14,6 +14,18 @@ const argv = require("yargs")
     default: false,
     describe: "enable to ffmpeg filter output"
   })
+  .option("addchapter", {
+    alias: "ac",
+    type: "boolean",
+    default: false,
+    describe: "Add encode file in chapter"
+  })
+  .option("channel", {
+    alias: "c",
+    type: "boolean",
+    default: false,
+    describe: "The channel name is taken from the environment variable (CHNNELNAME)"
+  })
   .option("encode", {
     alias: "e",
     type: "boolean",
@@ -56,8 +68,8 @@ const argv = require("yargs")
   )
   .check(function(argv) {
     const ext = path.extname(argv.input);
-    if (ext !== ".ts") {
-      console.error(`invalid file extension ${ext}.`);
+    if (ext !== ".ts" && ext !== ".m2ts") {
+      console.error(`Invalid file extension ${ext}. Only .ts and .m2ts files are allowed.`);
       return false;
     }
 
@@ -100,21 +112,20 @@ const main = async () => {
   const createOutAvs = require("./output/avs").create;
   const createChapter = require("./output/chapter_jls").create;
   const encode = require("./command/ffmpeg").exec;
-  const { INPUT_AVS, 
-          OUTPUT_AVS_CUT, 
-          OUTPUT_FILTER_CUT, 
+  const { INPUT_AVS,
+          OUTPUT_AVS_CUT,
+          OUTPUT_FILTER_CUT,
           SAVE_DIR,
           TSDIVIDER_OUTPUT
-        } = settings;
-  const channel = parseChannel(inputFile);
+  } = settings;
+  const channel_name = process.env.CHNNELNAME !== undefined ? process.env.CHNNELNAME : ''
+  const channel = argv.channel ? parseChannel(inputFile, channel_name) : parseChannel(inputFile, "");
   const param = parseParam(channel, inputFileName);
   let avsFile = createAvs(INPUT_AVS, inputFile, 1);
-  if(param.use_tssplit == 1){
-    console.log("TS spliting ...");
-    tsdivider(inputFile);
-    console.log("TS split done");
-    avsFile = createAvs(INPUT_AVS, TSDIVIDER_OUTPUT, -1);
-  };
+  console.log("TS spliting ...");
+  tsdivider(inputFile);
+  console.log("TS split done");
+  avsFile = createAvs(INPUT_AVS, TSDIVIDER_OUTPUT, -1);
 
   await chapterexe(avsFile);
   await logoframe(param, channel, avsFile);
@@ -126,7 +137,7 @@ const main = async () => {
   if(argv.filter) {createFilter(inputFile, OUTPUT_AVS_CUT, OUTPUT_FILTER_CUT); }
 
   if(argv.encode) {
-    encode(argv.outdir? argv.outdir : inputFileDir, argv.outname? argv.outname : inputFileName, argv.target, argv.option);
+    encode(argv.outdir? argv.outdir : inputFileDir, argv.outname? argv.outname : inputFileName, argv.target, argv.option, argv.addchapter);
   }
   if(argv.remove) {
     fs.removeSync(SAVE_DIR);

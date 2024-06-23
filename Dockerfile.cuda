@@ -1,0 +1,811 @@
+# syntax=docker/dockerfile:1
+#- -------------------------------------------------------------------------------------------------
+#- Global
+#-
+ARG DEBIAN_FRONTEND=noninteractive
+ARG DEBCONF_NOWARNINGS=yes
+ARG PYTHONUNBUFFERED=1
+ARG TZ=Asia/Tokyo
+
+# NodeJs version
+ARG NODE_VERSION=18
+
+# AviSynthPlus
+## Ref: https://github.com/AviSynth/AviSynthPlus/releases
+ARG AVISYNTHPLUS_VERSION=v3.7.3
+
+## Ref: https://github.com/vimeo/l-smash
+ARG LSMASH_VERSION=62a93fb6a23b013d38f30fcb827c2abda69ee3d1
+## Ref: https://github.com/dwbuiten/obuparse
+ARG OBUPARSE_VERSION=478adcc872d5a8a19443e87910508e261a0a60ba
+
+# retry dns and some http codes that might be transient errors
+ARG WGET_OPTS="--retry-on-host-error --retry-on-http-error=429,500,502,503"
+
+# Ref: https://github.com/FFmpeg/nv-codec-headers/tags
+ARG NVIDIA_CODECSDK_VER=n12.2.72.0
+# Ref: https://hub.docker.com/r/nvidia/cuda
+ARG NVIDIA_CUDA_VER=12.5.0
+
+# dpkg -l 'nvidia-dkms-*'
+# nvidia-dkms-XXX が違うとエラーになるため確認して下記を変更する
+ARG NVIDIA_CUDA_DRIVERS_VERSION=555
+ARG NVIDIA_VISIBLE_DEVICES=all
+ARG NVIDIA_DRIVER_CAPABILITIES=compute,video,utility
+
+#- -------------------------------------------------------------------------------------------------
+#- Builder
+#-
+FROM ubuntu:jammy AS base
+# ARG は、利用する各ステージごとに宣言する必要がある。
+ARG DEBIAN_FRONTEND
+ARG DEBCONF_NOWARNINGS
+ARG PYTHONUNBUFFERED
+
+ARG NODE_VERSION
+
+ARG TZ
+ENV TZ=${TZ}
+
+SHELL ["/bin/bash", "-c"]
+
+# Dependencies
+RUN set -eux && \
+    apt-get update && \
+    apt-get -y upgrade && \
+    apt-get -y install --no-install-recommends \
+    binutils \
+    ca-certificates \
+    curl \
+    gnupg \
+    less \
+    tzdata \
+    wget && \
+    \
+    # Cleanup \
+    apt-get -y autoremove && \
+    apt-get -y clean && \
+    rm -rf /var/lib/apt/lists/*
+
+## Nodejs setup
+RUN set -eux && \
+    curl -fsSL "https://deb.nodesource.com/setup_${NODE_VERSION}.x" | bash - && \
+    apt-get update && \
+    apt-get install -y --no-install-recommends \
+    nodejs &&\
+    \
+    # Cleanup \
+    apt-get -y autoremove && \
+    apt-get -y clean && \
+    rm -rf /var/lib/apt/lists/*
+
+## Nodejs setup
+RUN set -eux && \
+    node -v && \
+    npm --version
+
+#- -------------------------------------------------------------------------------------------------
+#- Build modules
+#-
+FROM base AS build-modules
+# ARG は、利用する各ステージごとに宣言する必要がある。
+ARG DEBCONF_NOWARNINGS
+ARG DEBIAN_FRONTEND
+ARG PYTHONUNBUFFERED
+ARG WGET_OPTS
+
+ARG PREFIX="/opt/modules"
+ENV LD_LIBRARY_PATH="${PREFIX}/lib:/opt/modules/lib:/usr/local/lib"
+ENV PKG_CONFIG_PATH="${PREFIX}/share/pkgconfig:${PREFIX}/lib/pkgconfig:/opt/modules/lib/pkgconfig"
+
+# AviSynthPlus
+ARG AVISYNTHPLUS_VERSION
+ARG LSMASH_VERSION
+ARG OBUPARSE_VERSION
+
+# l-smash-source
+## Ref: https://github.com/HomeOfAviSynthPlusEvolution/L-SMASH-Works/releases
+ARG LSMASHWORKS_VERSION=1170.0.0.0
+#20220505   OK
+#20230716   OK
+#1156.0.0.0 OK
+#1170.0.0.0 OK    20240304    VapourSynth: added XYZ12LE
+#1183.0.0.0 NG    20240317    Fixed the index recreation when audio stream
+#1187.0.0.0 NG    20240402
+#1192.0.0.0 NG    20240407    LSMASHAudioSource/LWLibavAudioSource
+#1194.0.0.0 NG    20240408    LSMASHAudioSource
+
+# FFmpeg
+## Ref: https://ffmpeg.org/releases/
+ARG FFMPEG_VERSION=6.1.1
+ARG FFMPEG_URL="https://ffmpeg.org/releases/ffmpeg-${FFMPEG_VERSION}.tar.bz2"
+
+# Create directory
+RUN set -eux && mkdir -p "${PREFIX}" "${PREFIX}/lib/pkgconfig" "${PREFIX}/src"
+
+# Build Dependencies
+RUN set -eux && \
+    apt-get update && \
+    apt-get -y install --no-install-recommends \
+    autoconf \
+    automake \
+    build-essential \
+    checkinstall \
+    cmake \
+    git-core \
+    libass-dev \
+    libboost-all-dev \
+    libfdk-aac-dev \
+    libfreetype6-dev \
+    libgnutls28-dev \
+    libmp3lame-dev \
+    libtool \
+    libunistring-dev \
+    libvorbis-dev \
+    libx264-dev \
+    meson \
+    ninja-build \
+    pkg-config \
+    texinfo \
+    yasm \
+    zlib1g-dev && \
+    \
+    # Cleanup \
+    apt-get -y autoremove && \
+    apt-get -y clean && \
+    rm -rf /var/lib/apt/lists/*
+
+## AviSynth+
+RUN set -eux && \
+    cd "${PREFIX}" && \
+    git clone --depth 1 -b ${AVISYNTHPLUS_VERSION} https://github.com/AviSynth/AviSynthPlus.git && \
+    cd AviSynthPlus && \
+    mkdir avisynth-build && \
+    cd avisynth-build && \
+    cmake ../ -G Ninja -DCMAKE_INSTALL_PREFIX="${PREFIX}" && \
+    ninja && \
+    checkinstall --pkgname=avisynth --pkgversion="$(grep -r \
+    Version avs_core/avisynth.pc | cut -f2 -d " ")-$(date --rfc-3339=date | \
+    sed 's/-//g')-git" --backup=no --deldoc=yes --delspec=yes --deldesc=yes \
+    --strip=yes --stripso=yes --addso=yes --fstrans=no --default ninja install && \
+    ninja -v -t clean && \
+    pkg-config --exists avisynth && \
+    cd "${PREFIX}" && \
+    mv -v AviSynthPlus "${PREFIX}/src"
+
+## FFmpeg
+RUN set -eux && \
+    cd "${PREFIX}" && \
+    wget ${WGET_OPTS} -O ffmpeg.tar.bz2     "${FFMPEG_URL}" && \
+    wget ${WGET_OPTS} -O ffmpeg.tar.bz2.asc "${FFMPEG_URL}.asc" && \
+    curl -sfSL https://ffmpeg.org/ffmpeg-devel.asc | gpg --import && \
+    gpg --verify ffmpeg.tar.bz2.asc ffmpeg.tar.bz2 && \
+    \
+    tar xf ffmpeg.tar.bz2 && \
+    cd ffmpeg-* && \
+    ./configure \
+    --disable-programs \
+    --disable-encoders \
+    --disable-decoders \
+    --enable-decoder={aac,aac_fixed,aac_latm,avs,avui,mpeg2_v4l2m2m,mpeg2video,mpegvideo} \
+    \
+    --disable-hwaccels \
+    --disable-muxers \
+    --disable-demuxers \
+    --enable-demuxer={aac,avs,avs2,avs3,mpegts,mpegtsraw} \
+    \
+    --disable-parsers \
+    # Unable to build av1 exclude
+    --enable-parser={aac,av1,avs2,avs3,mpegaudio,mpegvideo} \
+    \
+    --disable-bsfs \
+    --enable-bsf=aac_adtstoasc \
+    \
+    --disable-protocols \
+    --enable-protocol=file \
+    \
+    --disable-indevs \
+    --disable-outdevs \
+    --disable-devices \
+    --disable-filters \
+    \
+    # License
+    --enable-gpl \
+    --enable-nonfree \
+    --enable-version3 \
+    \
+    # small binary & static build
+    --disable-debug \
+    --disable-doc \
+    --disable-ffplay \
+    --disable-shared \
+    --enable-small \
+    --enable-static \
+    \
+    # https://trac.ffmpeg.org/wiki/CompilationGuide/Ubuntu
+    --extra-libs="-lpthread -lm" \
+    --pkg-config-flags="--static" \
+    \
+    --extra-cflags="-fopenmp" \
+    --extra-ldflags="-fopenmp -Wl,--allow-multiple-definition -Wl,-z,stack-size=2097152" \
+    --toolchain=hardened > ffmpeg_configure.log && \
+    make -j$(nproc) && \
+    make install && \
+    find . -type f -name '*.pc' -not -path '*doc/*' -exec cp -Lv '{}' ${PREFIX}/lib/pkgconfig \; && \
+    make clean && \
+    cd "${PREFIX}" && \
+    mv -v ffmpeg* "${PREFIX}/src"
+
+## Install obuparse
+RUN set -eux && \
+    cd "${PREFIX}" && \
+    git clone --depth 1 https://github.com/dwbuiten/obuparse.git && \
+    cd obuparse && \
+    sed -i'' -e "s@PREFIX=/usr/local@PREFIX=${PREFIX}@g" Makefile && \
+    make -j$(nproc) && \
+    make install && \
+    make clean && \
+    cd "${PREFIX}" && \
+    mv -v obuparse "${PREFIX}/src"
+
+## l-smash
+RUN set -eux && \
+    cd "${PREFIX}" && \
+    mkdir -p l-smash && \
+    cd l-smash && \
+    git init && \
+    git remote add origin https://github.com/vimeo/l-smash.git && \
+    git fetch --depth 1 origin ${LSMASH_VERSION} && \
+    git checkout FETCH_HEAD && \
+    ./configure \
+    --enable-shared \
+    --extra-cflags="-I${PREFIX}/include" \
+    --extra-ldflags="-L${PREFIX}/lib" \
+    --prefix="${PREFIX}" \
+    && \
+    make -j$(nproc) && \
+    make install && \
+    make clean && \
+    cd "${PREFIX}" && \
+    mv -v l-smash "${PREFIX}/src"
+
+## L-SMASH-Works
+RUN set -eux && \
+    cd "${PREFIX}" && \
+    git clone --depth 1 -b ${LSMASHWORKS_VERSION} \
+    https://github.com/HomeOfAviSynthPlusEvolution/L-SMASH-Works.git && \
+    cd L-SMASH-Works/AviSynth && \
+    LDFLAGS="-Wl,-Bsymbolic" meson build && \
+    cd build && \
+    ninja -v && \
+    ninja install && \
+    ninja -v -t clean && \
+    cd "${PREFIX}" && \
+    mv -v L-SMASH-Works "${PREFIX}/src"
+
+## join_logo_scp_trial build
+COPY modules    "${PREFIX}/src/JLSTSL/modules"
+ARG _BINDIR="${PREFIX}/src/JLSTSL/modules/join_logo_scp_trial/bin/"
+RUN set -eux && \
+    cd "${PREFIX}/src/JLSTSL/modules/chapter_exe/src" && \
+    sed -i'' -e "s@-I/usr/local/include/avisynth@$(pkg-config --cflags --libs avisynth)@g" Makefile && \
+    make -j$(nproc) && \
+    mv -v chapter_exe "${_BINDIR}"
+
+RUN set -eux && \
+    cd "${PREFIX}/src/JLSTSL/modules/logoframe/src" && \
+    sed -i'' -e "s@-I/usr/local/include/avisynth@$(pkg-config --cflags --libs avisynth)@g" Makefile && \
+    make -j$(nproc) && \
+    mv -v logoframe "${_BINDIR}"
+
+RUN set -eux && \
+    cd "${PREFIX}/src/JLSTSL/modules/join_logo_scp/src" && \
+    make -j$(nproc) && \
+    mv -v join_logo_scp "${_BINDIR}"
+
+RUN set -eux && \
+    cd "${PREFIX}/src/JLSTSL/modules/tsdivider/" && \
+    mkdir -p build && \
+    cd build && \
+    cmake -DCMAKE_BUILD_TYPE=Release .. && \
+    make -j$(nproc) && \
+    mv -v tsdivider "${_BINDIR}"
+
+RUN set -eux && \
+    cd "${PREFIX}/src/JLSTSL/modules/delogo/src" && \
+    mkdir -p ${PREFIX}/lib/avisynth/ && \
+    sed -i'' -e "s@-I/usr/local/include/avisynth@$(pkg-config --cflags --libs avisynth)@g" \
+    -e "s@INSTALL_DIR = /usr/local/lib/avisynth/@INSTALL_DIR = ${PREFIX}/lib/avisynth/@g" Makefile && \
+    make -j$(nproc) && \
+    mkdir -p /usr/local/lib/avisynth && \
+    make install
+
+RUN set -eux && \
+    cd "${PREFIX}/src/JLSTSL/modules/join_logo_scp_trial" && \
+    node -v && \
+    npm --version && \
+    npm install --no-save --loglevel=info --omit=dev && \
+    mv -v ${PREFIX}/src/JLSTSL/modules/join_logo_scp_trial /join_logo_scp_trial && \
+    \
+    # Copy JL directory
+    rm -rfv /join_logo_scp_trial/JL && \
+    cp -av "${PREFIX}/src/JLSTSL/modules/join_logo_scp/JL" /join_logo_scp_trial/ && \
+    test -f /join_logo_scp_trial/JL/data/ChList.csv && \
+    \
+    cd /join_logo_scp_trial && \
+    npm link
+
+# Archive source code
+RUN set -eux && \
+    cd "${PREFIX}" && \
+    tar -cv -f "src-$(date '+%Y%m%d%H%M%S%z').tar.xz" -C "${PREFIX}" src && \
+    rm -rfv "${PREFIX}/src"
+
+WORKDIR "/join_logo_scp_trial"
+ENTRYPOINT [ "/bin/bash", "-c" ]
+CMD [ "" ]
+
+#- -------------------------------------------------------------------------------------------------
+#- Build ffmpeg
+#-
+FROM nvidia/cuda:${NVIDIA_CUDA_VER}-devel-ubuntu22.04 AS build-ffmpeg
+# ARG は、利用する各ステージごとに宣言する必要がある。
+ARG DEBCONF_NOWARNINGS
+ARG DEBIAN_FRONTEND
+ARG PYTHONUNBUFFERED
+ARG WGET_OPTS
+
+ARG TZ
+ENV TZ=${TZ}
+
+ARG PREFIX="/opt/ffmpeg"
+ENV LD_LIBRARY_PATH="${PREFIX}/lib:/opt/modules/lib:/usr/local/lib"
+ENV PKG_CONFIG_PATH="${PREFIX}/share/pkgconfig:${PREFIX}/lib/pkgconfig:/opt/modules/lib/pkgconfig"
+
+# AviSynthPlus
+ARG AVISYNTHPLUS_VERSION
+ARG LSMASH_VERSION
+ARG OBUPARSE_VERSION
+
+# VMAF
+## Ref: https://github.com/Netflix/vmaf/releases
+ARG VMAF_VERSION=3.0.0
+ARG VMAF_URL="https://github.com/Netflix/vmaf/archive/refs/tags/v${VMAF_VERSION}.tar.gz"
+ARG VMAF_SHA256=7178c4833639e6b989ecae73131d02f70735fdb3fc2c7d84bc36c9c3461d93b1
+
+# l-smash-source
+## Ref: https://github.com/HomeOfAviSynthPlusEvolution/L-SMASH-Works/releases
+ARG LSMASHWORKS_VERSION=1194.0.0.0
+
+# FFmpeg
+## Ref: https://ffmpeg.org/releases/
+ARG FFMPEG_VERSION=7.0.1
+ARG FFMPEG_URL="https://ffmpeg.org/releases/ffmpeg-${FFMPEG_VERSION}.tar.bz2"
+
+# NVIDIA
+ARG NVIDIA_VISIBLE_DEVICES
+ARG NVIDIA_DRIVER_CAPABILITIES
+ENV LD_LIBRARY_PATH="/usr/local/cuda/compat:/usr/local/cuda/lib64:${LD_LIBRARY_PATH}"
+ENV PATH="/usr/local/cuda/bin:${PATH}"
+
+## https://docs.nvidia.com/cuda/cuda-compiler-driver-nvcc/index.html#virtual-architecture-feature-list
+ARG CUDA_CC="70 72 75 80 86 87 89 90 90a"
+ARG NVIDIA_CODECSDK_VER
+ARG NVIDIA_CUDA_VER
+
+SHELL ["/bin/bash", "-c"]
+
+# Create directory
+RUN set -eux && mkdir -p "${PREFIX}" "${PREFIX}/lib/pkgconfig" "${PREFIX}/src"
+
+# Build Dependencies
+RUN set -eux && \
+    apt-get update && \
+    apt-get -y upgrade && \
+    apt-get -y install --no-install-recommends \
+    apt-file \
+    autoconf \
+    automake \
+    build-essential \
+    ca-certificates \
+    cmake \
+    curl \
+    git-core \
+    gnupg \
+    libass-dev \
+    libfreetype6-dev \
+    libgnutls28-dev \
+    libmp3lame-dev \
+    libtool \
+    libunistring-dev \
+    libvorbis-dev \
+    meson \
+    ninja-build \
+    pkg-config \
+    texinfo \
+    wget \
+    yasm \
+    zlib1g-dev
+# Do not apt clean to resolve dependencies
+
+## Create Working directory
+RUN mkdir -p "${PREFIX}"
+
+## VMAF
+RUN apt-get -y install --no-install-recommends doxygen xxd
+
+## NASM
+RUN apt-get -y install --no-install-recommends nasm
+
+## libx264
+RUN apt-get -y install --no-install-recommends libx264-dev
+
+## libx265
+RUN apt-get -y install --no-install-recommends libx265-dev libnuma-dev
+
+## libvpx
+RUN apt-get -y install --no-install-recommends libvpx-dev
+
+## libfdk-aac
+RUN apt-get -y install --no-install-recommends libfdk-aac-dev
+
+## libopus
+RUN apt-get -y install --no-install-recommends libopus-dev
+
+## libaom
+RUN apt-get -y install --no-install-recommends libaom-dev libdav1d-dev
+
+## libaribb24
+RUN apt-get -y install --no-install-recommends libaribb24-dev
+
+## OpenCL
+RUN apt-get -y install --no-install-recommends ocl-icd-opencl-dev opencl-headers
+
+## avisynth+
+RUN apt-get -y install --no-install-recommends checkinstall
+
+## Intel Media SDK
+RUN sed -i -e's/ main/ main contrib non-free/g' /etc/apt/sources.list && \
+    set -eux && \
+    apt-get update && \
+    apt-get install -y --no-install-recommends \
+    libmfx-dev \
+    libva-dev \
+    intel-media-va-driver-non-free
+
+## libvmaf
+RUN set -eux && \
+    cd "${PREFIX}" && \
+    wget ${WGET_OPTS} -O vmaf.tar.gz "${VMAF_URL}" && \
+    echo "${VMAF_SHA256}  vmaf.tar.gz" | sha256sum --status -c - && \
+    tar -xf vmaf.tar.gz && \
+    cd vmaf-*/libvmaf && \
+    meson build --buildtype=release \
+    -Dbuilt_in_models=true \
+    -Denable_avx512=true \
+    -Denable_docs=false \
+    -Denable_float=true && \
+    ninja -vC build && \
+    ninja -vC build install && \
+    ninja -vC build -t clean && \
+    pkg-config --exists libvmaf && \
+    cd "${PREFIX}" && \
+    mv -v vmaf* "${PREFIX}/src"
+
+## NVIDIA Video Codec SDK
+RUN set -eux && \
+    cd "${PREFIX}" && \
+    git -C nv-codec-headers pull 2> /dev/null || \
+    git clone https://github.com/FFmpeg/nv-codec-headers -b ${NVIDIA_CODECSDK_VER} --depth 1 && \
+    cd nv-codec-headers && \
+    sed -i'' -e "s@PREFIX = /usr/local@PREFIX = ${PREFIX}@g" Makefile && \
+    make -j$(nproc) && \
+    make install && \
+    pkg-config --exists ffnvcodec && \
+    cd "${PREFIX}" && \
+    mv -v nv-codec-headers "${PREFIX}/src"
+
+## AviSynth+
+RUN set -eux && \
+    cd "${PREFIX}" && \
+    git clone --depth 1 -b ${AVISYNTHPLUS_VERSION} https://github.com/AviSynth/AviSynthPlus.git && \
+    cd AviSynthPlus && \
+    mkdir avisynth-build && \
+    cd avisynth-build && \
+    cmake ../ -G Ninja && \
+    ninja && \
+    checkinstall --pkgname=avisynth --pkgversion="$(grep -r \
+    Version avs_core/avisynth.pc | cut -f2 -d " ")-$(date --rfc-3339=date | \
+    sed 's/-//g')-git" --backup=no --deldoc=yes --delspec=yes --deldesc=yes \
+    --strip=yes --stripso=yes --addso=yes --fstrans=no --default ninja install && \
+    ninja -v -t clean && \
+    pkg-config --exists avisynth && \
+    cd "${PREFIX}" && \
+    mv -v AviSynthPlus "${PREFIX}/src"
+
+## FFmpeg
+# ldflags stack-size=2097152 is to increase default stack size from 128KB (musl default) to something
+# more similar to glibc (2MB). This fixing segfault with libaom-av1 and libsvtav1 as they seems to pass
+# large things on the stack.
+#
+# ldfalgs -Wl,--allow-multiple-definition is a workaround for linking with multiple rust staticlib to
+# not cause collision in toolchain symbols, see comment in checkdupsym script for details.
+# Ref: https://github.com/wader/static-ffmpeg/blob/master/Dockerfile
+RUN set -eux && \
+    type nvcc && \
+    nvcc --version
+
+RUN set -eux && \
+    cd "${PREFIX}" && \
+    wget ${WGET_OPTS} -O ffmpeg.tar.bz2     "${FFMPEG_URL}" && \
+    wget ${WGET_OPTS} -O ffmpeg.tar.bz2.asc "${FFMPEG_URL}.asc" && \
+    curl -sfSL https://ffmpeg.org/ffmpeg-devel.asc | gpg --import && \
+    gpg --verify ffmpeg.tar.bz2.asc ffmpeg.tar.bz2 && \
+    \
+    tar -xf ffmpeg.tar.bz2 && \
+    cd ffmpeg-* && \
+    set +ux && \
+    ary=($(echo ${CUDA_CC})) && \
+    for i in $(seq 1 ${#ary[@]}); do gencode="-gencode arch=compute_${ary[$i-1]},code=sm_${ary[$i-1]} $gencode"; done && \
+    set -ux && \
+    CUDA_OPTION="${gencode} -O2" && \
+    sed -i -e 's/$nvccflags -ptx/$nvccflags/g' ./configure && \
+    ./configure \
+    # encoder & decoder
+    --enable-avisynth \
+    --enable-libaom \
+    --enable-libaribb24 \
+    --enable-libass \
+    --enable-libdav1d \
+    --enable-libfdk-aac \
+    --enable-libfreetype \
+    --enable-libmfx \
+    --enable-libmp3lame \
+    --enable-libopus \
+    --enable-libvmaf \
+    --enable-libvorbis \
+    --enable-libvpx \
+    --enable-libx264 \
+    --enable-libx265 \
+    --enable-opencl \
+    --enable-vaapi \
+    \
+    # NVIDIA encoder & decoder
+    --enable-cuda-nvcc \
+    --enable-cuvid \
+    --enable-ffnvcodec \
+    --enable-libnpp \
+    --enable-nvdec \
+    --enable-nvenc \
+    --extra-cflags="-I/usr/local/cuda/include" \
+    --extra-ldflags="-L/usr/local/cuda/compat -L/usr/local/cuda/lib64" \
+    # CC指定フラグ追加 (https://github.com/NVIDIA/cuda-samples/issues/46#issuecomment-863835984)
+    --nvccflags="${CUDA_OPTION}" \
+    \
+    # License
+    --enable-gpl \
+    --enable-nonfree \
+    --enable-version3 \
+    \
+    # small binary & static build
+    --disable-debug \
+    --disable-doc \
+    --disable-ffplay \
+    --disable-shared \
+    --enable-small \
+    --enable-static \
+    \
+    # https://trac.ffmpeg.org/wiki/CompilationGuide/Ubuntu
+    --extra-libs="-lpthread -lm" \
+    --pkg-config-flags="--static" \
+    \
+    --extra-cflags="-fopenmp" \
+    --extra-ldflags="-fopenmp -Wl,--allow-multiple-definition -Wl,-z,stack-size=2097152" \
+    --toolchain=hardened > ffmpeg_configure.log && \
+    make -j$(nproc) && \
+    make install && \
+    find . -type f -name '*.pc' -not -path '*doc/*' -exec cp -Lv '{}' ${PREFIX}/lib/pkgconfig \; && \
+    # make clean && \
+    cd "${PREFIX}" && \
+    mv -v ffmpeg* "${PREFIX}/src"
+
+## Install obuparse
+RUN set -eux && \
+    cd "${PREFIX}" && \
+    mkdir -p obuparse && \
+    cd obuparse && \
+    git init && \
+    git remote add origin https://github.com/dwbuiten/obuparse.git && \
+    git fetch --depth 1 origin ${OBUPARSE_VERSION} && \
+    git checkout FETCH_HEAD && \
+    sed -i'' -e "s@PREFIX=/usr/local@PREFIX=${PREFIX}@g" Makefile && \
+    make -j$(nproc) && \
+    make install && \
+    make clean && \
+    cd "${PREFIX}" && \
+    mv -v obuparse "${PREFIX}/src"
+RUN <<EOF
+cat <<- _DOC_ > ${PREFIX}/lib/pkgconfig/obuparse.pc
+prefix=${PREFIX}
+includedir=\${prefix}/include
+
+Name: obuparse
+Description: A simple and portable single file AV1 OBU parser.
+Version: ${OBUPARSE_VERSION}
+
+Cflags: -I\${includedir}
+_DOC_
+EOF
+
+## l-smash
+RUN set -eux && \
+    cd "${PREFIX}" && \
+    mkdir -p l-smash && \
+    cd l-smash && \
+    git init && \
+    git remote add origin https://github.com/vimeo/l-smash.git && \
+    git fetch --depth 1 origin ${LSMASH_VERSION} && \
+    git checkout FETCH_HEAD && \
+    ./configure \
+    --enable-shared \
+    --extra-cflags="-I${PREFIX}/include" \
+    --extra-ldflags="-L${PREFIX}/lib" \
+    --prefix="${PREFIX}" \
+    && \
+    make -j$(nproc) && \
+    make install && \
+    make clean && \
+    pkg-config --exists liblsmash && \
+    cd "${PREFIX}" && \
+    mv -v l-smash "${PREFIX}/src"
+
+## L-SMASH-Works
+RUN set -eux && \
+    cd "${PREFIX}" && \
+    git clone -b ${LSMASHWORKS_VERSION} https://github.com/HomeOfAviSynthPlusEvolution/L-SMASH-Works.git && \
+    cd L-SMASH-Works/AviSynth && \
+    LDFLAGS="-Wl,-Bsymbolic" meson build && \
+    cd build && \
+    ninja -v && \
+    ninja install && \
+    ninja -v -t clean && \
+    cd "${PREFIX}" && \
+    mv -v L-SMASH-Works "${PREFIX}/src"
+RUN <<EOF
+cat <<- _DOC_ > ${PREFIX}/lib/pkgconfig/liblsmashsource.pc
+Name: L-SMASH-Works
+Description: Note about LSMASHVideoSource and LibavSMASHSource.
+Version: ${LSMASHWORKS_VERSION}
+
+Libs: -L/usr/local/lib/avisynth
+_DOC_
+EOF
+
+## FFmpeg runtime package list saved
+RUN set -eux && \
+    apt-file update && \
+    ldd /usr/local/bin/ffmpeg /usr/local/bin/ffprobe /usr/local/lib/avisynth/liblsmashsource.so | \
+    awk -F ' => ' '{print $2}' | awk -F' ' '{print $1}' | \
+    tr -d '\t' | sort | uniq | grep -v -E '^/opt/ffmpeg' | xargs -I'{}' cp -Lv '{}' ${PREFIX}/lib
+
+RUN set -eux && \
+    ls -lah /usr/local/bin && \
+    ffmpeg -version
+
+RUN set -eux && \
+    ffmpeg -hide_banner -hwaccels && \
+    ffmpeg -hide_banner -buildconf && \
+    for i in decoders encoders; do echo ${i}:; ffmpeg -hide_banner -${i} | \
+    egrep -i "[x|h]264|[x|h]265|av1|cuvid|hevc|libmfx|nv[dec|enc]|qsv|vaapi|vp9"; done
+
+# Archive source code
+RUN set -eux && \
+    cd "${PREFIX}" && \
+    tar -cv -f "src-$(date '+%Y%m%d%H%M%S%z').tar.xz" -C "${PREFIX}" src && \
+    rm -rfv "${PREFIX}/src"
+
+#- -------------------------------------------------------------------------------------------------
+#- Runner
+#-
+FROM base AS runner
+# ARG は、利用する各ステージごとに宣言する必要がある。
+ARG DEBCONF_NOWARNINGS
+ARG DEBIAN_FRONTEND
+ARG PYTHONUNBUFFERED
+
+# NVIDIA
+ARG NVIDIA_VISIBLE_DEVICES
+ENV NVIDIA_VISIBLE_DEVICES=${NVIDIA_VISIBLE_DEVICES}
+ARG NVIDIA_DRIVER_CAPABILITIES
+ENV NVIDIA_DRIVER_CAPABILITIES=${NVIDIA_DRIVER_CAPABILITIES}
+
+# NVIDIA cuda
+ARG NVIDIA_CUDA_VER
+ARG NVIDIA_CUDA_DRIVERS_VERSION
+ENV NVIDIA_CUDA_DRIVERS_VERSION=${NVIDIA_CUDA_DRIVERS_VERSION}
+
+ENV LD_LIBRARY_PATH="/opt/ffmpeg/lib:/opt/modules/lib:/usr/local/lib"
+ENV PKG_CONFIG_PATH="/opt/ffmpeg/share/pkgconfig:/opt/ffmpeg/lib/pkgconfig:/opt/modules/lib/pkgconfig"
+
+## Intel Media SDK
+# RUN set -eux && \
+#     apt-get update && \
+#     apt-get install -y --no-install-recommends \
+#     intel-media-va-driver-non-free &&\
+#     apt-get clean && \
+#     rm -rf /var/lib/apt/lists/*
+
+# NVENC Video Encoding runtime library
+RUN set -eux && \
+    wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2204/x86_64/cuda-keyring_1.1-1_all.deb && \
+    dpkg -i cuda-keyring_1.1-1_all.deb && \
+    apt-get update && \
+    apt-get -y install --no-install-recommends \
+    libnpp-dev-$(echo ${NVIDIA_CUDA_VER%\.*} | tr '.' '-') \
+    libnvidia-decode-${NVIDIA_CUDA_DRIVERS_VERSION} \
+    libnvidia-encode-${NVIDIA_CUDA_DRIVERS_VERSION} \
+    ocl-icd-opencl-dev && \
+    \
+    # Cleanup \
+    apt-get -y autoremove && \
+    apt-get -y clean && \
+    rm -rf /var/lib/apt/lists/* && \
+    rm -f cuda-keyring_1.1-1_all.deb
+
+# FFmpeg runtime
+COPY --from=build-ffmpeg /usr/local/bin/ffmpeg      /usr/local/bin/ffmpeg
+COPY --from=build-ffmpeg /usr/local/bin/ffprobe     /usr/local/bin/ffprobe
+COPY --from=build-ffmpeg /opt/ffmpeg                /opt/ffmpeg
+COPY --from=build-ffmpeg /usr/local/lib/avisynth    /usr/local/lib/avisynth
+
+# FFmpeg Dependencies
+#RUN set -eux && \
+#    apt-get update && \
+#    apt-get -y install --no-install-recommends \
+#    $(cat /ffmpeg_runtime.txt) && \
+#    \
+#    # Cleanup \
+#    apt-get -y autoremove && \
+#    apt-get -y clean && \
+#    rm -rf /var/lib/apt/lists/*
+
+## check FFmpeg exec
+RUN set -eux && \
+    ls -lah /opt/ffmpeg/lib && \
+    ls -lah /usr/local/bin && \
+    ffmpeg -version
+
+# check FFmpeg library
+RUN set -eux && \
+    ffmpeg -hide_banner -hwaccels && \
+    ffmpeg -hide_banner -buildconf && \
+    for i in decoders encoders; do echo ${i}:; ffmpeg -hide_banner -${i} | \
+    egrep -i "[x|h]264|[x|h]265|av1|cuvid|hevc|libmfx|nv[dec|enc]|qsv|vaapi|vp9"; done
+
+COPY --from=build-modules /join_logo_scp_trial      /join_logo_scp_trial
+COPY --from=build-modules /opt/modules              /opt/modules
+WORKDIR "/join_logo_scp_trial"
+
+# join_logo_scp
+RUN set -eux && \
+    apt-get update && \
+    apt-get -y install --no-install-recommends \
+    libboost-filesystem-dev \
+    libboost-program-options-dev \
+    libboost-system-dev && \
+    \
+    # Cleanup \
+    apt-get -y autoremove && \
+    apt-get -y clean && \
+    rm -rf /var/lib/apt/lists/* && \
+    npm link
+
+
+# Link join_logo_scp
+RUN set -eux && \
+    jlse --help
+
+ENTRYPOINT [ "/bin/bash", "-c" ]
+CMD [ "" ]
+
+# vim: set filetype=dockerfile:

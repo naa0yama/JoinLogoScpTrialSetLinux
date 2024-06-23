@@ -17,6 +17,8 @@ on:
       - reopened
       - synchronize
       - auto_merge_enabled
+  schedule:
+    - cron: '00 02 1 * *'
   workflow_dispatch:
     inputs:
       rebuild:
@@ -30,28 +32,36 @@ on:
 
 jobs:
   builds:
-    name: Container
+    name: Container ${{ matrix.type }}
     #if: ${{ contains(fromJson('["renovate/", "dev/","revert"]'), github.head_ref) }} || ${{ contains(fromJson('["renovate/", "dev/","revert"]'), github.ref_name) }} || ${{ inputs.rebuild == 'true' }}
     runs-on: ubuntu-latest
-    timeout-minutes: 40
+    timeout-minutes: 60
+    strategy:
+      max-parallel: 5
+      matrix:
+        type:
+          - cuda
+          - ubuntu2204
     permissions:
       contents: read
       packages: write
 
     steps:
       - name: Checkout from repository
-        uses: actions/checkout@v4.1.4
+        uses: actions/checkout@v4.1.7
 
       - uses: docker/metadata-action@v5
         id: meta
         with:
-          images: ghcr.io/${{ github.repository }}
+          images: ghcr.io/naa0yama/join_logo_scp_trial
+          flavor: |
+            latest=false
+            suffix=-${{ matrix.type }}
           tags: |
-            # set latest tag for default branch
-            type=raw,value=latest,enable={{is_default_branch}}
+            type=ref,event=tag,prefix=,enable=true
 
             # minimal (short sha)
-            type=sha,enable=true,priority=100,prefix=,suffix=,format=short
+            type=sha,enable=true,prefix=,format=short
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -64,9 +74,10 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build and push
-        uses: docker/build-push-action@v5.0.0
+        uses: docker/build-push-action@v6.1.0
         with:
           context: .
+          file: Dockerfile.${{ matrix.type }}
           push: true # ${{ contains( github.event.pull_request.merged, true ) || inputs.rebuild == 'true' }}
           cache-from: type=gha
           cache-to: type=gha,mode=max

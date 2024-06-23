@@ -17,21 +17,17 @@ exports.exec = param => {
       "-inscp",
       CHAPTEREXE_OUTPUT,
       "-incmd",
-      path.join(JL_DIR, param.JLOGO_CMD),
+      path.join(JL_DIR, param.JL_RUN),
       "-o",
       OUTPUT_AVS_CUT,
       "-oscp",
       JLSCP_OUTPUT,
       "-flags",
-      param.JL_FLAGS
+      param.FLAGS
     ];
 
-    if (param.JLOGO_OPT1 && param.JLOGO_OPT1 !== "") {
-      args = args.concat(param.JLOGO_OPT1.split(" "));
-    }
-
-    if (param.JLOGO_OPT2 && param.JLOGO_OPT2 !== "") {
-      args = args.concat(param.JLOGO_OPT2.split(" "));
+    if (param.OPTIONS && param.OPTIONS !== "") {
+      args = args.concat(param.OPTIONS.split(" "));
     }
 
     const child = childProcess.spawn(JLSCP_COMMAND, args);
