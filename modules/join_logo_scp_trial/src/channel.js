@@ -1,4 +1,4 @@
-const csv = require("csv/lib/sync");
+const csv = require("csv-parse/sync");
 const fs = require("fs-extra");
 const path = require("path");
 const jaconv = require("jaconv");
