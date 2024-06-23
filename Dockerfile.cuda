@@ -36,7 +36,7 @@ ARG NVIDIA_DRIVER_CAPABILITIES=compute,video,utility
 #- -------------------------------------------------------------------------------------------------
 #- Builder
 #-
-FROM ubuntu:jammy AS base
+FROM ubuntu:noble AS base
 # ARG は、利用する各ステージごとに宣言する必要がある。
 ARG DEBIAN_FRONTEND
 ARG DEBCONF_NOWARNINGS
