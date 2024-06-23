@@ -1,5 +1,4 @@
 const path = require("path");
-const uuid = require("uuid/v4")();
 const fs = require("fs-extra");
 
 exports.CHANNEL_LIST = path.join(__dirname, "../JL/data/ChList.csv");
