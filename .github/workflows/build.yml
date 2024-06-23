@@ -5,6 +5,7 @@ on:
   push:
     branches-ignore:
       - main
+      - dev/**
     tags:
     - 'v*'
   pull_request:
@@ -34,7 +35,7 @@ jobs:
     name: Container ${{ matrix.type }}
     #if: ${{ contains(fromJson('["renovate/", "dev/","revert"]'), github.head_ref) }} || ${{ contains(fromJson('["renovate/", "dev/","revert"]'), github.ref_name) }} || ${{ inputs.rebuild == 'true' }}
     runs-on: ubuntu-latest
-    timeout-minutes: 40
+    timeout-minutes: 60
     strategy:
       max-parallel: 5
       matrix:
