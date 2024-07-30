@@ -66,6 +66,13 @@ jobs:
           docker rmi $(docker image ls -q --filter "reference=alpine*")
           docker rmi $(docker image ls -q --filter "reference=ubuntu:20.04")
   
+      - name: Disk size analyze AFTER
+        if: ${{ always() }}
+        run: |
+          set -eux
+
+          df -hl
+
       - name: Checkout from repository
         uses: actions/checkout@v4.1.7
 
@@ -92,13 +99,6 @@ jobs:
           username: ${{ github.repository_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Disk size analyze BEFORE
-        if: ${{ always() }}
-        run: |
-          set -eux
-
-          df -hl
-
       - name: Build and push
         uses: docker/build-push-action@v6.4.0
         with:
@@ -110,10 +110,3 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           no-cache: ${{ inputs.no-cache == true }}
-
-      - name: Disk size analyze AFTER
-        if: ${{ always() }}
-        run: |
-          set -eux
-
-          df -hl
