@@ -22,7 +22,7 @@
   "homepage": "https://github.com/tobitti0/join_logo_scp_trial",
   "dependencies": {
     "async": "3.2.5",
-    "csv": "6.3.9",
+    "csv": "6.3.10",
     "fs-extra": "11.2.0",
     "jaconv": "1.0.4",
     "yargs": "17.7.2"
