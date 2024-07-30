@@ -77,6 +77,13 @@ jobs:
           username: ${{ github.repository_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Disk size analyze BEFORE
+        if: ${{ always() }}
+        run: |
+          set -eux
+
+          df -hl
+
       - name: Build and push
         uses: docker/build-push-action@v6.4.0
         with:
@@ -89,7 +96,7 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           no-cache: ${{ inputs.no-cache == true }}
 
-      - name: Disk size analyze
+      - name: Disk size analyze AFTER
         if: ${{ always() }}
         run: |
           set -eux
