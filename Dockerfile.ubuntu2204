@@ -316,7 +316,7 @@ RUN set -eux && \
     mv -v ${PREFIX}/src/JLSTSL/modules/join_logo_scp_trial /join_logo_scp_trial && \
     \
     # Copy JL directory
-    rm -rfv /join_logo_scp_trial/JL && \
+    rm -rf /join_logo_scp_trial/JL && \
     cp -av "${PREFIX}/src/JLSTSL/modules/join_logo_scp/JL" /join_logo_scp_trial/ && \
     test -f /join_logo_scp_trial/JL/data/ChList.csv && \
     \
@@ -327,7 +327,7 @@ RUN set -eux && \
 RUN set -eux && \
     cd "${PREFIX}" && \
     tar -cv -f "src-$(date '+%Y%m%d%H%M%S%z').tar.xz" -C "${PREFIX}" src && \
-    rm -rfv "${PREFIX}/src"
+    rm -rf "${PREFIX}/src"
 
 WORKDIR "/join_logo_scp_trial"
 ENTRYPOINT [ "/bin/bash", "-c" ]
@@ -616,7 +616,7 @@ RUN set -eux && \
 RUN set -eux && \
     cd "${PREFIX}" && \
     tar -cv -f "src-$(date '+%Y%m%d%H%M%S%z').tar.xz" -C "${PREFIX}" src && \
-    rm -rfv "${PREFIX}/src"
+    rm -rf "${PREFIX}/src"
 
 #- -------------------------------------------------------------------------------------------------
 #- Runner
