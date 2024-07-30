@@ -29,13 +29,17 @@ on:
         options:
           - "true"
           - "false"
+      no-cache:
+        description: "Build docker images with no cache"
+        default: false
+        required: false
+        type: boolean
 
 jobs:
   builds:
     name: Container ${{ matrix.type }}
-    #if: ${{ contains(fromJson('["renovate/", "dev/","revert"]'), github.head_ref) }} || ${{ contains(fromJson('["renovate/", "dev/","revert"]'), github.ref_name) }} || ${{ inputs.rebuild == 'true' }}
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 90
     strategy:
       max-parallel: 5
       matrix:
@@ -47,6 +51,28 @@ jobs:
       packages: write
 
     steps:
+      - name: Remove unnecessary files
+        run: |
+          set -eux
+
+          docker images
+          sudo rm -rf "/opt/ghc" || true
+          sudo rm -rf "/usr/share/dotnet" || true
+          sudo rm -rf "$AGENT_TOOLSDIRECTORY" || true
+          sudo rm -rf "/usr/local/lib/android" || true
+          sudo rm -rf "/usr/local/share/boost" || true
+          docker rmi $(docker image ls -q --filter "reference=node*")
+          docker rmi $(docker image ls -q --filter "reference=debian*")
+          docker rmi $(docker image ls -q --filter "reference=alpine*")
+          docker rmi $(docker image ls -q --filter "reference=ubuntu:20.04")
+  
+      - name: Disk size analyze AFTER
+        if: ${{ always() }}
+        run: |
+          set -eux
+
+          df -hl
+
       - name: Checkout from repository
         uses: actions/checkout@v4.1.7
 
@@ -78,8 +104,9 @@ jobs:
         with:
           context: .
           file: Dockerfile.${{ matrix.type }}
-          push: true # ${{ contains( github.event.pull_request.merged, true ) || inputs.rebuild == 'true' }}
+          push: ${{ contains( github.event.pull_request.merged, true ) || inputs.rebuild == 'true' }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+          no-cache: ${{ inputs.no-cache == true }}
