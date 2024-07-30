@@ -88,3 +88,10 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           no-cache: ${{ inputs.no-cache == true }}
+
+      - name: Disk size analyze
+        if: ${{ always() }}
+        run: |
+          set -eux
+
+          dh -hl
