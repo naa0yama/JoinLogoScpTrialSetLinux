@@ -17,10 +17,9 @@ on:
       - reopened
       - synchronize
       - auto_merge_enabled
-  schedule:
-    - cron: '00 02 1 * *'
   release:
     types:
+      - edited
       - released
       - prereleased
   workflow_dispatch:
