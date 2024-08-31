@@ -2,7 +2,7 @@
 name: Builds
 
 on:
-  push:
+  # push:
   #   branches-ignore:
   #     - main
   #     - dev/**
