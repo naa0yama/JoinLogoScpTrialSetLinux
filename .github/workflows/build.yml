@@ -19,9 +19,8 @@ on:
       - auto_merge_enabled
   release:
     types:
+      - created
       - edited
-      - released
-      - prereleased
   workflow_dispatch:
     inputs:
       rebuild:
