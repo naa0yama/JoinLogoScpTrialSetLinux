@@ -19,6 +19,11 @@ on:
       - auto_merge_enabled
   schedule:
     - cron: '00 02 1 * *'
+  release:
+    types:
+      - released
+      - prereleased
+      
   workflow_dispatch:
     inputs:
       rebuild:
@@ -104,7 +109,7 @@ jobs:
         with:
           context: .
           file: Dockerfile.${{ matrix.type }}
-          push: ${{ contains( github.event.pull_request.merged, true ) || inputs.rebuild == 'true' }}
+          push: ${{ contains( github.event.pull_request.merged, true ) || inputs.rebuild == 'true' || github.event_name == 'release' }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
           tags: ${{ steps.meta.outputs.tags }}
