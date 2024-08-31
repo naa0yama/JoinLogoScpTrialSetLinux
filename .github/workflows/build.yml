@@ -6,8 +6,8 @@ on:
   #   branches-ignore:
   #     - main
   #     - dev/**
-    tags:
-    - 'v*'
+  #   tags:
+  #     - 'v*'
   pull_request:
     branches:
       - main
@@ -23,7 +23,6 @@ on:
     types:
       - released
       - prereleased
-      
   workflow_dispatch:
     inputs:
       rebuild:
