@@ -125,7 +125,7 @@ const main = async () => {
   console.log("TS spliting ...");
   tsdivider(inputFile);
   console.log("TS split done");
-  avsFile = createAvs(INPUT_AVS, TSDIVIDER_OUTPUT, 1);
+  avsFile = createAvs(INPUT_AVS, TSDIVIDER_OUTPUT, -1);
 
   await chapterexe(avsFile);
   await logoframe(param, channel, avsFile);
