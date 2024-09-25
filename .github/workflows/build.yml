@@ -76,7 +76,7 @@ jobs:
           df -hl
 
       - name: Checkout from repository
-        uses: actions/checkout@v4.1.7
+        uses: actions/checkout@v4.2.0
 
       - uses: docker/metadata-action@v5
         id: meta
