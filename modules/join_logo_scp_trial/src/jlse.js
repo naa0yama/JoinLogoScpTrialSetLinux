@@ -38,6 +38,12 @@ const argv = require("yargs")
     default: "cutcm_logo",
     describe: "select encord target"
   })
+  .option("tsdivider", {
+    alias: "tsd",
+    type: "boolean",
+    default: false,
+    describe: "select tsdivider enabled"
+  })
   .option("option", {
     alias: "o",
     type: "string",
@@ -122,10 +128,13 @@ const main = async () => {
   const channel = argv.channel ? parseChannel(inputFile, channel_name) : parseChannel(inputFile, "");
   const param = parseParam(channel, inputFileName);
   let avsFile = createAvs(INPUT_AVS, inputFile, 1);
-  console.log("TS spliting ...");
-  tsdivider(inputFile);
-  console.log("TS split done");
-  avsFile = createAvs(INPUT_AVS, TSDIVIDER_OUTPUT, -1);
+
+  if(argv.tsdivider) {
+    console.log("TS spliting ...");
+    tsdivider(inputFile);
+    console.log("TS split done");
+    avsFile = createAvs(INPUT_AVS, TSDIVIDER_OUTPUT, -1);
+  }
 
   await chapterexe(avsFile);
   await logoframe(param, channel, avsFile);
