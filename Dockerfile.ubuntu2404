@@ -110,7 +110,7 @@ ARG FFMPEG_VERSION=6.1.1
 ARG FFMPEG_URL="https://ffmpeg.org/releases/ffmpeg-${FFMPEG_VERSION}.tar.bz2"
 
 # Create directory
-RUN set -eux && mkdir -p "${PREFIX}" "${PREFIX}/src"
+RUN set -eux && mkdir -p "${PREFIX}" "${PREFIX}/bin" "${PREFIX}/include" "${PREFIX}/lib" "${PREFIX}/src"
 
 # Build Dependencies
 RUN set -eux && \
@@ -368,7 +368,7 @@ ARG FFMPEG_VERSION=7.0.1
 ARG FFMPEG_URL="https://ffmpeg.org/releases/ffmpeg-${FFMPEG_VERSION}.tar.bz2"
 
 # Create directory
-RUN set -eux && mkdir -p "${PREFIX}" "${PREFIX}/src"
+RUN set -eux && mkdir -p "${PREFIX}" "${PREFIX}/bin" "${PREFIX}/include" "${PREFIX}/lib" "${PREFIX}/src"
 
 # Build Dependencies
 RUN set -eux && \
@@ -451,7 +451,7 @@ RUN set -eux && \
     echo "${VMAF_SHA256}  vmaf.tar.gz" | sha256sum --status -c - && \
     tar -xf vmaf.tar.gz && \
     cd vmaf-*/libvmaf && \
-    meson build --buildtype=release \
+    meson build --buildtype=release --libdir="${PREFIX}/lib" \
     -Dbuilt_in_models=true \
     -Denable_avx512=true \
     -Denable_docs=false \
