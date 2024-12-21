@@ -48,6 +48,7 @@ jobs:
         type:
           - cuda
           - ubuntu2204
+          - ubuntu2404
     permissions:
       contents: read
       packages: write
@@ -67,7 +68,7 @@ jobs:
           docker rmi $(docker image ls -q --filter "reference=debian*")
           docker rmi $(docker image ls -q --filter "reference=alpine*")
           docker rmi $(docker image ls -q --filter "reference=ubuntu:20.04")
-  
+
       - name: Disk size analyze AFTER
         if: ${{ always() }}
         run: |

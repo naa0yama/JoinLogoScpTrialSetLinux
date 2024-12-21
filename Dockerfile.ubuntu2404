@@ -25,7 +25,7 @@ ARG WGET_OPTS="--retry-on-host-error --retry-on-http-error=429,500,502,503"
 #- -------------------------------------------------------------------------------------------------
 #- Builder
 #-
-FROM ubuntu:jammy AS base
+FROM ubuntu:noble AS base
 # ARG は、利用する各ステージごとに宣言する必要がある。
 ARG DEBIAN_FRONTEND
 ARG DEBCONF_NOWARNINGS
