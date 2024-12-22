@@ -121,7 +121,7 @@ ARG FFMPEG_VERSION=6.1.1
 ARG FFMPEG_URL="https://ffmpeg.org/releases/ffmpeg-${FFMPEG_VERSION}.tar.bz2"
 
 # Create directory
-RUN set -eux && mkdir -p "${PREFIX}" "${PREFIX}/lib/pkgconfig" "${PREFIX}/src"
+RUN set -eux && mkdir -p "${PREFIX}" "${PREFIX}/bin" "${PREFIX}/include" "${PREFIX}/lib" "${PREFIX}/lib/pkgconfig" "${PREFIX}/src"
 
 # Build Dependencies
 RUN set -eux && \
@@ -396,7 +396,7 @@ ARG NVIDIA_CUDA_VER
 SHELL ["/bin/bash", "-c"]
 
 # Create directory
-RUN set -eux && mkdir -p "${PREFIX}" "${PREFIX}/lib/pkgconfig" "${PREFIX}/src"
+RUN set -eux && mkdir -p "${PREFIX}" "${PREFIX}/bin" "${PREFIX}/include" "${PREFIX}/lib" "${PREFIX}/lib/pkgconfig" "${PREFIX}/src"
 
 # Build Dependencies
 RUN set -eux && \
