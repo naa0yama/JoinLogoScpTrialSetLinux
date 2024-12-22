@@ -100,6 +100,7 @@ FROM nvidia/cuda:${NVIDIA_CUDA_VER}-devel-ubuntu22.04 AS build-ffmpeg
 # ARG は、利用する各ステージごとに宣言する必要がある。
 ARG DEBCONF_NOWARNINGS
 ARG DEBIAN_FRONTEND
+ARG NODE_VERSION
 ARG PYTHONUNBUFFERED
 ARG WGET_OPTS
 
@@ -441,6 +442,23 @@ RUN set -eux && \
     egrep -i "[x|h]264|[x|h]265|av1|cuvid|hevc|libmfx|nv[dec|enc]|qsv|vaapi|vp9"; done
 
 ## join_logo_scp_trial build
+## Nodejs setup
+RUN set -eux && \
+    curl -fsSL "https://deb.nodesource.com/setup_${NODE_VERSION}.x" | bash - && \
+    apt-get update && \
+    apt-get install -y --no-install-recommends \
+    nodejs &&\
+    \
+    # Cleanup \
+    apt-get -y autoremove && \
+    apt-get -y clean && \
+    rm -rf /var/lib/apt/lists/*
+
+## Nodejs setup
+RUN set -eux && \
+    node -v && \
+    npm --version
+
 COPY modules    "${PREFIX}/src/JLSTSL/modules"
 ARG _BINDIR="${PREFIX}/src/JLSTSL/modules/join_logo_scp_trial/bin/"
 RUN set -eux && \
