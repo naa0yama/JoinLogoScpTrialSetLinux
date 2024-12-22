@@ -130,7 +130,6 @@ RUN set -eux && \
     libmp3lame-dev \
     libtool \
     libunistring-dev \
-    libvorbis-dev \
     libx264-dev \
     meson \
     ninja-build \
@@ -389,7 +388,6 @@ RUN set -eux && \
     libmp3lame-dev \
     libtool \
     libunistring-dev \
-    libvorbis-dev \
     meson \
     ninja-build \
     pkg-config \
@@ -414,14 +412,8 @@ RUN apt-get -y install --no-install-recommends libx264-dev
 ## libx265
 RUN apt-get -y install --no-install-recommends libx265-dev libnuma-dev
 
-## libvpx
-RUN apt-get -y install --no-install-recommends libvpx-dev
-
 ## libfdk-aac
 RUN apt-get -y install --no-install-recommends libfdk-aac-dev
-
-## libopus
-RUN apt-get -y install --no-install-recommends libopus-dev
 
 ## libaom
 RUN apt-get -y install --no-install-recommends libaom-dev libdav1d-dev
@@ -434,15 +426,6 @@ RUN apt-get -y install --no-install-recommends ocl-icd-opencl-dev opencl-headers
 
 ## avisynth+
 RUN apt-get -y install --no-install-recommends checkinstall
-
-## Intel Media SDK
-RUN sed -i -e's/ main/ main contrib non-free/g' /etc/apt/sources.list && \
-    set -eux && \
-    apt-get update && \
-    apt-get install -y --no-install-recommends \
-    libmfx-dev \
-    libva-dev \
-    intel-media-va-driver-non-free
 
 ## libvmaf
 RUN set -eux && \
@@ -507,16 +490,11 @@ RUN set -eux && \
     --enable-libdav1d \
     --enable-libfdk-aac \
     --enable-libfreetype \
-    --enable-libmfx \
     --enable-libmp3lame \
-    --enable-libopus \
     --enable-libvmaf \
-    --enable-libvorbis \
-    --enable-libvpx \
     --enable-libx264 \
     --enable-libx265 \
     --enable-opencl \
-    --enable-vaapi \
     \
     # License
     --enable-gpl \
