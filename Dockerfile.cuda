@@ -579,8 +579,7 @@ RUN set -eux && \
     for i in decoders encoders; do echo ${i}:; ffmpeg -hide_banner -${i} | \
     egrep -i "[x|h]264|[x|h]265|av1|cuvid|hevc|libmfx|nv[dec|enc]|qsv|vaapi|vp9"; done
 
-COPY --from=build-modules /join_logo_scp_trial      /join_logo_scp_trial
-COPY --from=build-modules /opt/modules              /opt/modules
+COPY --from=build-ffmpeg /join_logo_scp_trial      /join_logo_scp_trial
 WORKDIR "/join_logo_scp_trial"
 
 # join_logo_scp
