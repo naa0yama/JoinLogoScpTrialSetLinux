@@ -298,16 +298,13 @@ RUN set -eux && \
     --enable-libdav1d \
     --enable-libfdk-aac \
     --enable-libfreetype \
-    --enable-libmfx \
     --enable-libmp3lame \
     --enable-libopus \
     --enable-libvmaf \
     --enable-libvorbis \
-    --enable-libvpx \
     --enable-libx264 \
     --enable-libx265 \
     --enable-opencl \
-    --enable-vaapi \
     \
     # NVIDIA encoder & decoder
     --enable-cuda-nvcc \
