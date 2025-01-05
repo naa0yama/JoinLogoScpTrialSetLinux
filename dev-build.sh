@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 set -eux
-DOCKER_TAG="${1:-ubuntu2204}"
+DOCKER_TAG="${1:-ubuntu2404}"
 DOCKER_ROOT="${2:-no}"
 DISK_PERCENT=$(df / | grep -oP '(?<=)[0-9]+(?=%\s/)')
 
@@ -18,7 +18,7 @@ else
   DOCKER_OPTS="--user $(id -u):$(id -g)"
 fi
 
-time docker run ${DOCKER_OPTS} --rm -it --gpus all \
+time docker run ${DOCKER_OPTS} --rm -it \
   -v $PWD/videos/source:/source \
   -v $PWD/videos/dist:/dist \
   -v $PWD/modules/join_logo_scp_trial/JL:/join_logo_scp_trial/JL \
