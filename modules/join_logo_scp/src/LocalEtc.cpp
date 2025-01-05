@@ -18,6 +18,7 @@
 
 #if defined(LOCALETC_USE_ICONV_SJIS)
 #include <iconv.h>
+#include <cstring>
 #endif
 
 using namespace std;
@@ -638,7 +639,7 @@ string LocalEtcCore::LocalOfs::writeRevStr(const string& buf){		// WideByteã‚³ãƒ
 	}
 #endif
 	return revbuf;
-}	
+}
 void LocalEtcCore::LocalOfs::close(){
 	ofs.close();
 }

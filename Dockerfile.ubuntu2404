@@ -193,7 +193,7 @@ RUN set -eux && \
     echo "${VMAF_SHA256}  vmaf.tar.gz" | sha256sum --status -c - && \
     tar -xf vmaf.tar.gz && \
     cd vmaf-*/libvmaf && \
-    meson build --buildtype=release \
+    meson build --buildtype=release --libdir="${PREFIX}/lib" \
     -Dbuilt_in_models=true \
     -Denable_avx512=true \
     -Denable_docs=false \

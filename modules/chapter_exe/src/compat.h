@@ -1,6 +1,9 @@
 #ifndef __COMPAT__
 #define __COMPAT__
 #ifndef _WIN32
+
+#include <cstdint>
+
 typedef struct
 {
     uint32_t  biSize;

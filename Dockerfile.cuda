@@ -14,10 +14,18 @@ ARG NODE_VERSION=18
 ## Ref: https://github.com/AviSynth/AviSynthPlus/releases
 ARG AVISYNTHPLUS_VERSION=v3.7.3
 
-## Ref: https://github.com/vimeo/l-smash
-ARG LSMASH_VERSION=62a93fb6a23b013d38f30fcb827c2abda69ee3d1
+# l-smash
+## Ref: https://github.com/Mr-Ojii/l-smash
+ARG LSMASH_VERSION=315b4747d759e336ef30b18e93f2e676810e5a73
+## Ref: https://github.com/Mr-Ojii/L-SMASH-Works
+ARG LSMASHWORKS_VERSION=2119ea45f248f2c53946e34bfe88728aa770464f
+
 ## Ref: https://github.com/dwbuiten/obuparse
 ARG OBUPARSE_VERSION=478adcc872d5a8a19443e87910508e261a0a60ba
+
+# FFmpeg
+## Ref: https://ffmpeg.org/releases/
+ARG FFMPEG_VERSION=7.1
 
 # retry dns and some http codes that might be transient errors
 ARG WGET_OPTS="--retry-on-host-error --retry-on-http-error=429,500,502,503"
@@ -84,266 +92,6 @@ RUN set -eux && \
     node -v && \
     npm --version
 
-#- -------------------------------------------------------------------------------------------------
-#- Build modules
-#-
-FROM base AS build-modules
-# ARG は、利用する各ステージごとに宣言する必要がある。
-ARG DEBCONF_NOWARNINGS
-ARG DEBIAN_FRONTEND
-ARG PYTHONUNBUFFERED
-ARG WGET_OPTS
-
-ARG PREFIX="/opt/modules"
-ENV LD_LIBRARY_PATH="${PREFIX}/lib:/opt/modules/lib:/usr/local/lib"
-ENV PKG_CONFIG_PATH="${PREFIX}/share/pkgconfig:${PREFIX}/lib/pkgconfig:/opt/modules/lib/pkgconfig"
-
-# AviSynthPlus
-ARG AVISYNTHPLUS_VERSION
-ARG LSMASH_VERSION
-ARG OBUPARSE_VERSION
-
-# l-smash-source
-## Ref: https://github.com/HomeOfAviSynthPlusEvolution/L-SMASH-Works/releases
-ARG LSMASHWORKS_VERSION=1170.0.0.0
-#20220505   OK
-#20230716   OK
-#1156.0.0.0 OK
-#1170.0.0.0 OK    20240304    VapourSynth: added XYZ12LE
-#1183.0.0.0 NG    20240317    Fixed the index recreation when audio stream
-#1187.0.0.0 NG    20240402
-#1192.0.0.0 NG    20240407    LSMASHAudioSource/LWLibavAudioSource
-#1194.0.0.0 NG    20240408    LSMASHAudioSource
-
-# FFmpeg
-## Ref: https://ffmpeg.org/releases/
-ARG FFMPEG_VERSION=6.1.1
-ARG FFMPEG_URL="https://ffmpeg.org/releases/ffmpeg-${FFMPEG_VERSION}.tar.bz2"
-
-# Create directory
-RUN set -eux && mkdir -p "${PREFIX}" "${PREFIX}/lib/pkgconfig" "${PREFIX}/src"
-
-# Build Dependencies
-RUN set -eux && \
-    apt-get update && \
-    apt-get -y install --no-install-recommends \
-    autoconf \
-    automake \
-    build-essential \
-    checkinstall \
-    cmake \
-    git-core \
-    libass-dev \
-    libboost-all-dev \
-    libfdk-aac-dev \
-    libfreetype6-dev \
-    libgnutls28-dev \
-    libmp3lame-dev \
-    libtool \
-    libunistring-dev \
-    libvorbis-dev \
-    libx264-dev \
-    meson \
-    ninja-build \
-    pkg-config \
-    texinfo \
-    yasm \
-    zlib1g-dev && \
-    \
-    # Cleanup \
-    apt-get -y autoremove && \
-    apt-get -y clean && \
-    rm -rf /var/lib/apt/lists/*
-
-## AviSynth+
-RUN set -eux && \
-    cd "${PREFIX}" && \
-    git clone --depth 1 -b ${AVISYNTHPLUS_VERSION} https://github.com/AviSynth/AviSynthPlus.git && \
-    cd AviSynthPlus && \
-    mkdir avisynth-build && \
-    cd avisynth-build && \
-    cmake ../ -G Ninja -DCMAKE_INSTALL_PREFIX="${PREFIX}" && \
-    ninja && \
-    checkinstall --pkgname=avisynth --pkgversion="$(grep -r \
-    Version avs_core/avisynth.pc | cut -f2 -d " ")-$(date --rfc-3339=date | \
-    sed 's/-//g')-git" --backup=no --deldoc=yes --delspec=yes --deldesc=yes \
-    --strip=yes --stripso=yes --addso=yes --fstrans=no --default ninja install && \
-    ninja -v -t clean && \
-    pkg-config --exists avisynth && \
-    cd "${PREFIX}" && \
-    mv -v AviSynthPlus "${PREFIX}/src"
-
-## FFmpeg
-RUN set -eux && \
-    cd "${PREFIX}" && \
-    wget ${WGET_OPTS} -O ffmpeg.tar.bz2     "${FFMPEG_URL}" && \
-    wget ${WGET_OPTS} -O ffmpeg.tar.bz2.asc "${FFMPEG_URL}.asc" && \
-    curl -sfSL https://ffmpeg.org/ffmpeg-devel.asc | gpg --import && \
-    gpg --verify ffmpeg.tar.bz2.asc ffmpeg.tar.bz2 && \
-    \
-    tar xf ffmpeg.tar.bz2 && \
-    cd ffmpeg-* && \
-    ./configure \
-    --disable-programs \
-    --disable-encoders \
-    --disable-decoders \
-    --enable-decoder={aac,aac_fixed,aac_latm,avs,avui,mpeg2_v4l2m2m,mpeg2video,mpegvideo} \
-    \
-    --disable-hwaccels \
-    --disable-muxers \
-    --disable-demuxers \
-    --enable-demuxer={aac,avs,avs2,avs3,mpegts,mpegtsraw} \
-    \
-    --disable-parsers \
-    # Unable to build av1 exclude
-    --enable-parser={aac,av1,avs2,avs3,mpegaudio,mpegvideo} \
-    \
-    --disable-bsfs \
-    --enable-bsf=aac_adtstoasc \
-    \
-    --disable-protocols \
-    --enable-protocol=file \
-    \
-    --disable-indevs \
-    --disable-outdevs \
-    --disable-devices \
-    --disable-filters \
-    \
-    # License
-    --enable-gpl \
-    --enable-nonfree \
-    --enable-version3 \
-    \
-    # small binary & static build
-    --disable-debug \
-    --disable-doc \
-    --disable-ffplay \
-    --disable-shared \
-    --enable-small \
-    --enable-static \
-    \
-    # https://trac.ffmpeg.org/wiki/CompilationGuide/Ubuntu
-    --extra-libs="-lpthread -lm" \
-    --pkg-config-flags="--static" \
-    \
-    --extra-cflags="-fopenmp" \
-    --extra-ldflags="-fopenmp -Wl,--allow-multiple-definition -Wl,-z,stack-size=2097152" \
-    --toolchain=hardened > ffmpeg_configure.log && \
-    make -j$(nproc) && \
-    make install && \
-    find . -type f -name '*.pc' -not -path '*doc/*' -exec cp -Lv '{}' ${PREFIX}/lib/pkgconfig \; && \
-    make clean && \
-    cd "${PREFIX}" && \
-    mv -v ffmpeg* "${PREFIX}/src"
-
-## Install obuparse
-RUN set -eux && \
-    cd "${PREFIX}" && \
-    git clone --depth 1 https://github.com/dwbuiten/obuparse.git && \
-    cd obuparse && \
-    sed -i'' -e "s@PREFIX=/usr/local@PREFIX=${PREFIX}@g" Makefile && \
-    make -j$(nproc) && \
-    make install && \
-    make clean && \
-    cd "${PREFIX}" && \
-    mv -v obuparse "${PREFIX}/src"
-
-## l-smash
-RUN set -eux && \
-    cd "${PREFIX}" && \
-    mkdir -p l-smash && \
-    cd l-smash && \
-    git init && \
-    git remote add origin https://github.com/vimeo/l-smash.git && \
-    git fetch --depth 1 origin ${LSMASH_VERSION} && \
-    git checkout FETCH_HEAD && \
-    ./configure \
-    --enable-shared \
-    --extra-cflags="-I${PREFIX}/include" \
-    --extra-ldflags="-L${PREFIX}/lib" \
-    --prefix="${PREFIX}" \
-    && \
-    make -j$(nproc) && \
-    make install && \
-    make clean && \
-    cd "${PREFIX}" && \
-    mv -v l-smash "${PREFIX}/src"
-
-## L-SMASH-Works
-RUN set -eux && \
-    cd "${PREFIX}" && \
-    git clone --depth 1 -b ${LSMASHWORKS_VERSION} \
-    https://github.com/HomeOfAviSynthPlusEvolution/L-SMASH-Works.git && \
-    cd L-SMASH-Works/AviSynth && \
-    LDFLAGS="-Wl,-Bsymbolic" meson build && \
-    cd build && \
-    ninja -v && \
-    ninja install && \
-    ninja -v -t clean && \
-    cd "${PREFIX}" && \
-    mv -v L-SMASH-Works "${PREFIX}/src"
-
-## join_logo_scp_trial build
-COPY modules    "${PREFIX}/src/JLSTSL/modules"
-ARG _BINDIR="${PREFIX}/src/JLSTSL/modules/join_logo_scp_trial/bin/"
-RUN set -eux && \
-    cd "${PREFIX}/src/JLSTSL/modules/chapter_exe/src" && \
-    sed -i'' -e "s@-I/usr/local/include/avisynth@$(pkg-config --cflags --libs avisynth)@g" Makefile && \
-    make -j$(nproc) && \
-    mv -v chapter_exe "${_BINDIR}"
-
-RUN set -eux && \
-    cd "${PREFIX}/src/JLSTSL/modules/logoframe/src" && \
-    sed -i'' -e "s@-I/usr/local/include/avisynth@$(pkg-config --cflags --libs avisynth)@g" Makefile && \
-    make -j$(nproc) && \
-    mv -v logoframe "${_BINDIR}"
-
-RUN set -eux && \
-    cd "${PREFIX}/src/JLSTSL/modules/join_logo_scp/src" && \
-    make -j$(nproc) && \
-    mv -v join_logo_scp "${_BINDIR}"
-
-RUN set -eux && \
-    cd "${PREFIX}/src/JLSTSL/modules/tsdivider/" && \
-    mkdir -p build && \
-    cd build && \
-    cmake -DCMAKE_BUILD_TYPE=Release .. && \
-    make -j$(nproc) && \
-    mv -v tsdivider "${_BINDIR}"
-
-RUN set -eux && \
-    cd "${PREFIX}/src/JLSTSL/modules/delogo/src" && \
-    mkdir -p ${PREFIX}/lib/avisynth/ && \
-    sed -i'' -e "s@-I/usr/local/include/avisynth@$(pkg-config --cflags --libs avisynth)@g" \
-    -e "s@INSTALL_DIR = /usr/local/lib/avisynth/@INSTALL_DIR = ${PREFIX}/lib/avisynth/@g" Makefile && \
-    make -j$(nproc) && \
-    mkdir -p /usr/local/lib/avisynth && \
-    make install
-
-RUN set -eux && \
-    cd "${PREFIX}/src/JLSTSL/modules/join_logo_scp_trial" && \
-    node -v && \
-    npm --version && \
-    npm install --no-save --loglevel=info --omit=dev && \
-    mv -v ${PREFIX}/src/JLSTSL/modules/join_logo_scp_trial /join_logo_scp_trial && \
-    \
-    # Copy JL directory
-    rm -rf /join_logo_scp_trial/JL && \
-    cp -av "${PREFIX}/src/JLSTSL/modules/join_logo_scp/JL" /join_logo_scp_trial/ && \
-    test -f /join_logo_scp_trial/JL/data/ChList.csv && \
-    \
-    cd /join_logo_scp_trial && \
-    npm link
-
-# Archive source code
-RUN set -eux && \
-    cd "${PREFIX}" && \
-    tar -cv -f "src-$(date '+%Y%m%d%H%M%S%z').tar.xz" -C "${PREFIX}" src && \
-    rm -rf "${PREFIX}/src"
-
-WORKDIR "/join_logo_scp_trial"
-ENTRYPOINT [ "/bin/bash", "-c" ]
-CMD [ "" ]
 
 #- -------------------------------------------------------------------------------------------------
 #- Build ffmpeg
@@ -352,6 +100,7 @@ FROM nvidia/cuda:${NVIDIA_CUDA_VER}-devel-ubuntu22.04 AS build-ffmpeg
 # ARG は、利用する各ステージごとに宣言する必要がある。
 ARG DEBCONF_NOWARNINGS
 ARG DEBIAN_FRONTEND
+ARG NODE_VERSION
 ARG PYTHONUNBUFFERED
 ARG WGET_OPTS
 
@@ -365,6 +114,7 @@ ENV PKG_CONFIG_PATH="${PREFIX}/share/pkgconfig:${PREFIX}/lib/pkgconfig:/opt/modu
 # AviSynthPlus
 ARG AVISYNTHPLUS_VERSION
 ARG LSMASH_VERSION
+ARG LSMASHWORKS_VERSION
 ARG OBUPARSE_VERSION
 
 # VMAF
@@ -373,13 +123,8 @@ ARG VMAF_VERSION=3.0.0
 ARG VMAF_URL="https://github.com/Netflix/vmaf/archive/refs/tags/v${VMAF_VERSION}.tar.gz"
 ARG VMAF_SHA256=7178c4833639e6b989ecae73131d02f70735fdb3fc2c7d84bc36c9c3461d93b1
 
-# l-smash-source
-## Ref: https://github.com/HomeOfAviSynthPlusEvolution/L-SMASH-Works/releases
-ARG LSMASHWORKS_VERSION=1194.0.0.0
-
 # FFmpeg
-## Ref: https://ffmpeg.org/releases/
-ARG FFMPEG_VERSION=7.0.1
+ARG FFMPEG_VERSION
 ARG FFMPEG_URL="https://ffmpeg.org/releases/ffmpeg-${FFMPEG_VERSION}.tar.bz2"
 
 # NVIDIA
@@ -396,7 +141,7 @@ ARG NVIDIA_CUDA_VER
 SHELL ["/bin/bash", "-c"]
 
 # Create directory
-RUN set -eux && mkdir -p "${PREFIX}" "${PREFIX}/lib/pkgconfig" "${PREFIX}/src"
+RUN set -eux && mkdir -p "${PREFIX}" "${PREFIX}/bin" "${PREFIX}/include" "${PREFIX}/lib" "${PREFIX}/lib/pkgconfig" "${PREFIX}/src"
 
 # Build Dependencies
 RUN set -eux && \
@@ -408,17 +153,21 @@ RUN set -eux && \
     automake \
     build-essential \
     ca-certificates \
+    checkinstall \
     cmake \
     curl \
     git-core \
     gnupg \
     libass-dev \
+    libboost-all-dev \
+    libfdk-aac-dev \
     libfreetype6-dev \
     libgnutls28-dev \
     libmp3lame-dev \
     libtool \
     libunistring-dev \
     libvorbis-dev \
+    libx264-dev \
     meson \
     ninja-build \
     pkg-config \
@@ -463,15 +212,6 @@ RUN apt-get -y install --no-install-recommends ocl-icd-opencl-dev opencl-headers
 
 ## avisynth+
 RUN apt-get -y install --no-install-recommends checkinstall
-
-## Intel Media SDK
-RUN sed -i -e's/ main/ main contrib non-free/g' /etc/apt/sources.list && \
-    set -eux && \
-    apt-get update && \
-    apt-get install -y --no-install-recommends \
-    libmfx-dev \
-    libva-dev \
-    intel-media-va-driver-non-free
 
 ## libvmaf
 RUN set -eux && \
@@ -559,16 +299,13 @@ RUN set -eux && \
     --enable-libdav1d \
     --enable-libfdk-aac \
     --enable-libfreetype \
-    --enable-libmfx \
     --enable-libmp3lame \
     --enable-libopus \
     --enable-libvmaf \
     --enable-libvorbis \
-    --enable-libvpx \
     --enable-libx264 \
     --enable-libx265 \
     --enable-opencl \
-    --enable-vaapi \
     \
     # NVIDIA encoder & decoder
     --enable-cuda-nvcc \
@@ -605,7 +342,7 @@ RUN set -eux && \
     make -j$(nproc) && \
     make install && \
     find . -type f -name '*.pc' -not -path '*doc/*' -exec cp -Lv '{}' ${PREFIX}/lib/pkgconfig \; && \
-    # make clean && \
+    make clean && \
     cd "${PREFIX}" && \
     mv -v ffmpeg* "${PREFIX}/src"
 
@@ -643,7 +380,7 @@ RUN set -eux && \
     mkdir -p l-smash && \
     cd l-smash && \
     git init && \
-    git remote add origin https://github.com/vimeo/l-smash.git && \
+    git remote add origin https://github.com/Mr-Ojii/l-smash.git && \
     git fetch --depth 1 origin ${LSMASH_VERSION} && \
     git checkout FETCH_HEAD && \
     ./configure \
@@ -662,8 +399,13 @@ RUN set -eux && \
 ## L-SMASH-Works
 RUN set -eux && \
     cd "${PREFIX}" && \
-    git clone -b ${LSMASHWORKS_VERSION} https://github.com/HomeOfAviSynthPlusEvolution/L-SMASH-Works.git && \
-    cd L-SMASH-Works/AviSynth && \
+    mkdir -p L-SMASH-Works && \
+    cd L-SMASH-Works && \
+    git init && \
+    git remote add origin https://github.com/Mr-Ojii/L-SMASH-Works.git && \
+    git fetch --depth 1 origin ${LSMASHWORKS_VERSION} && \
+    git checkout FETCH_HEAD && \
+    cd AviSynth && \
     LDFLAGS="-Wl,-Bsymbolic" meson build && \
     cd build && \
     ninja -v && \
@@ -671,6 +413,7 @@ RUN set -eux && \
     ninja -v -t clean && \
     cd "${PREFIX}" && \
     mv -v L-SMASH-Works "${PREFIX}/src"
+
 RUN <<EOF
 cat <<- _DOC_ > ${PREFIX}/lib/pkgconfig/liblsmashsource.pc
 Name: L-SMASH-Works
@@ -697,6 +440,75 @@ RUN set -eux && \
     ffmpeg -hide_banner -buildconf && \
     for i in decoders encoders; do echo ${i}:; ffmpeg -hide_banner -${i} | \
     egrep -i "[x|h]264|[x|h]265|av1|cuvid|hevc|libmfx|nv[dec|enc]|qsv|vaapi|vp9"; done
+
+## join_logo_scp_trial build
+## Nodejs setup
+RUN set -eux && \
+    curl -fsSL "https://deb.nodesource.com/setup_${NODE_VERSION}.x" | bash - && \
+    apt-get update && \
+    apt-get install -y --no-install-recommends \
+    nodejs &&\
+    \
+    # Cleanup \
+    apt-get -y autoremove && \
+    apt-get -y clean && \
+    rm -rf /var/lib/apt/lists/*
+
+## Nodejs setup
+RUN set -eux && \
+    node -v && \
+    npm --version
+
+COPY modules    "${PREFIX}/src/JLSTSL/modules"
+ARG _BINDIR="${PREFIX}/src/JLSTSL/modules/join_logo_scp_trial/bin/"
+RUN set -eux && \
+    cd "${PREFIX}/src/JLSTSL/modules/chapter_exe/src" && \
+    sed -i'' -e "s@-I/usr/local/include/avisynth@$(pkg-config --cflags --libs avisynth)@g" Makefile && \
+    make -j$(nproc) && \
+    mv -v chapter_exe "${_BINDIR}"
+
+RUN set -eux && \
+    cd "${PREFIX}/src/JLSTSL/modules/logoframe/src" && \
+    sed -i'' -e "s@-I/usr/local/include/avisynth@$(pkg-config --cflags --libs avisynth)@g" Makefile && \
+    make -j$(nproc) && \
+    mv -v logoframe "${_BINDIR}"
+
+RUN set -eux && \
+    cd "${PREFIX}/src/JLSTSL/modules/join_logo_scp/src" && \
+    make -j$(nproc) && \
+    mv -v join_logo_scp "${_BINDIR}"
+
+RUN set -eux && \
+    cd "${PREFIX}/src/JLSTSL/modules/tsdivider/" && \
+    mkdir -p build && \
+    cd build && \
+    cmake -DCMAKE_BUILD_TYPE=Release .. && \
+    make -j$(nproc) && \
+    mv -v tsdivider "${_BINDIR}"
+
+RUN set -eux && \
+    cd "${PREFIX}/src/JLSTSL/modules/delogo/src" && \
+    mkdir -p ${PREFIX}/lib/avisynth/ && \
+    sed -i'' -e "s@-I/usr/local/include/avisynth@$(pkg-config --cflags --libs avisynth)@g" \
+    -e "s@INSTALL_DIR = /usr/local/lib/avisynth/@INSTALL_DIR = ${PREFIX}/lib/avisynth/@g" Makefile && \
+    make -j$(nproc) && \
+    mkdir -p /usr/local/lib/avisynth && \
+    make install
+
+RUN set -eux && \
+    cd "${PREFIX}/src/JLSTSL/modules/join_logo_scp_trial" && \
+    node -v && \
+    npm --version && \
+    npm install --no-save --loglevel=info --omit=dev && \
+    mv -v ${PREFIX}/src/JLSTSL/modules/join_logo_scp_trial /join_logo_scp_trial && \
+    \
+    # Copy JL directory
+    rm -rf /join_logo_scp_trial/JL && \
+    cp -av "${PREFIX}/src/JLSTSL/modules/join_logo_scp/JL" /join_logo_scp_trial/ && \
+    test -f /join_logo_scp_trial/JL/data/ChList.csv && \
+    \
+    cd /join_logo_scp_trial && \
+    npm link
 
 # Archive source code
 RUN set -eux && \
@@ -782,8 +594,7 @@ RUN set -eux && \
     for i in decoders encoders; do echo ${i}:; ffmpeg -hide_banner -${i} | \
     egrep -i "[x|h]264|[x|h]265|av1|cuvid|hevc|libmfx|nv[dec|enc]|qsv|vaapi|vp9"; done
 
-COPY --from=build-modules /join_logo_scp_trial      /join_logo_scp_trial
-COPY --from=build-modules /opt/modules              /opt/modules
+COPY --from=build-ffmpeg /join_logo_scp_trial      /join_logo_scp_trial
 WORKDIR "/join_logo_scp_trial"
 
 # join_logo_scp
