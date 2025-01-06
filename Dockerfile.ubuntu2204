@@ -429,7 +429,7 @@ RUN set -eux && \
     ffmpeg -hide_banner -hwaccels && \
     ffmpeg -hide_banner -buildconf && \
     for i in decoders encoders; do echo ${i}:; ffmpeg -hide_banner -${i} | \
-    egrep -i "[x|h]264|[x|h]265|av1|cuvid|hevc|libmfx|nv[dec|enc]|qsv|vaapi|vp9"; done
+    egrep -i "[x|h]264|[x|h]265|av1|cuvid|hevc|nv[dec|enc]|qsv|vaapi|vp9"; done
 
 ## join_logo_scp_trial build
 COPY modules    "${PREFIX}/src/JLSTSL/modules"
@@ -501,22 +501,23 @@ ARG PYTHONUNBUFFERED
 ENV LD_LIBRARY_PATH="/opt/ffmpeg/lib:/opt/modules/lib:/usr/local/lib"
 ENV PKG_CONFIG_PATH="/opt/ffmpeg/share/pkgconfig:/opt/ffmpeg/lib/pkgconfig:/opt/modules/lib/pkgconfig"
 
+# Intel Driver
+RUN set -eux && \
+    apt-get update && \
+    apt-get -y install --no-install-recommends \
+    intel-media-va-driver \
+    vainfo && \
+    \
+    # Cleanup \
+    apt-get -y autoremove && \
+    apt-get -y clean && \
+    rm -rf /var/lib/apt/lists/*
+
 # FFmpeg runtime
 COPY --from=build-ffmpeg /usr/local/bin/ffmpeg      /usr/local/bin/ffmpeg
 COPY --from=build-ffmpeg /usr/local/bin/ffprobe     /usr/local/bin/ffprobe
 COPY --from=build-ffmpeg /opt/ffmpeg                /opt/ffmpeg
 COPY --from=build-ffmpeg /usr/local/lib/avisynth    /usr/local/lib/avisynth
-
-# FFmpeg Dependencies
-#RUN set -eux && \
-#    apt-get update && \
-#    apt-get -y install --no-install-recommends \
-#    $(cat /ffmpeg_runtime.txt) && \
-#    \
-#    # Cleanup \
-#    apt-get -y autoremove && \
-#    apt-get -y clean && \
-#    rm -rf /var/lib/apt/lists/*
 
 ## check FFmpeg exec
 RUN set -eux && \
@@ -529,7 +530,7 @@ RUN set -eux && \
     ffmpeg -hide_banner -hwaccels && \
     ffmpeg -hide_banner -buildconf && \
     for i in decoders encoders; do echo ${i}:; ffmpeg -hide_banner -${i} | \
-    egrep -i "[x|h]264|[x|h]265|av1|cuvid|hevc|libmfx|nv[dec|enc]|qsv|vaapi|vp9"; done
+    egrep -i "[x|h]264|[x|h]265|av1|cuvid|hevc|nv[dec|enc]|qsv|vaapi|vp9"; done
 
 COPY --from=build-ffmpeg /join_logo_scp_trial      /join_logo_scp_trial
 WORKDIR "/join_logo_scp_trial"
