@@ -53,28 +53,6 @@ jobs:
       packages: write
 
     steps:
-      - name: Remove unnecessary files
-        run: |
-          set -eux
-
-          docker images
-          sudo rm -rf "/opt/ghc" || true
-          sudo rm -rf "/usr/share/dotnet" || true
-          sudo rm -rf "$AGENT_TOOLSDIRECTORY" || true
-          sudo rm -rf "/usr/local/lib/android" || true
-          sudo rm -rf "/usr/local/share/boost" || true
-          docker rmi $(docker image ls -q --filter "reference=node*")
-          docker rmi $(docker image ls -q --filter "reference=debian*")
-          docker rmi $(docker image ls -q --filter "reference=alpine*")
-          docker rmi $(docker image ls -q --filter "reference=ubuntu:20.04")
-
-      - name: Disk size analyze AFTER
-        if: ${{ always() }}
-        run: |
-          set -eux
-
-          df -hl
-
       - name: Checkout from repository
         uses: actions/checkout@v4.2.2
 
