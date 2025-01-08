@@ -11,30 +11,36 @@ ARG TZ=Asia/Tokyo
 ARG NODE_VERSION=18
 
 # AviSynthPlus
-## Ref: https://github.com/AviSynth/AviSynthPlus/releases
-ARG AVISYNTHPLUS_VERSION=v3.7.3
+## AviSynthPlus     Ref: https://github.com/AviSynth/AviSynthPlus/releases
+## l-smash          Ref: https://github.com/Mr-Ojii/l-smash
+## L-SMASH-Works    Ref: https://github.com/Mr-Ojii/L-SMASH-Works
+ARG AVISYNTHPLUS_VERSION=v3.7.3 \
+    LSMASH_VERSION=315b4747d759e336ef30b18e93f2e676810e5a73 \
+    LSMASHWORKS_VERSION=2119ea45f248f2c53946e34bfe88728aa770464f
 
-# l-smash
-## Ref: https://github.com/Mr-Ojii/l-smash
-ARG LSMASH_VERSION=315b4747d759e336ef30b18e93f2e676810e5a73
-## Ref: https://github.com/Mr-Ojii/L-SMASH-Works
-ARG LSMASHWORKS_VERSION=2119ea45f248f2c53946e34bfe88728aa770464f
+# VMAF
+## Ref: https://github.com/Netflix/vmaf/releases
+ARG VMAF_VERSION=3.0.0
+ARG VMAF_URL="https://github.com/Netflix/vmaf/archive/refs/tags/v${VMAF_VERSION}.tar.gz"
+ARG VMAF_SHA256=7178c4833639e6b989ecae73131d02f70735fdb3fc2c7d84bc36c9c3461d93b1
 
-## Ref: https://github.com/dwbuiten/obuparse
-ARG OBUPARSE_VERSION=478adcc872d5a8a19443e87910508e261a0a60ba
+# Intel
+## gmmlib           Ref: https://github.com/intel/gmmlib/releases
+## media-driver     Ref: https://github.com/intel/media-driver/releases
+## libva            Ref: https://github.com/intel/libva/releases
+## libvpl           Ref: https://github.com/intel/libvpl/releases
+## vpl-gpu-rt       Ref: https://github.com/intel/vpl-gpu-rt/releases
+ARG INTEL_GMMLIB=intel-gmmlib-22.6.0 \
+    INTEL_MEDIA_DRIVER=intel-media-24.3.4 \
+    INTEL_LIBVA_VERSION=2.22.0 \
+    INTEL_LIBVPL_VERSION=v2.14.0 \
+    INTEL_VPL_GPU_RT_VERSION=intel-onevpl-24.3.4
 
 # FFmpeg
-## Ref: https://ffmpeg.org/releases/
-ARG FFMPEG_VERSION=7.1
-
-## Ref: https://github.com/intel/libva/releases
-ARG LIBVA_VERSION=2.22.0
-
-## Ref: https://github.com/intel/libvpl
-ARG INTEL_LIBVPL_VERSION=v2.14.0
-
-## Ref: https://github.com/intel/vpl-gpu-rt
-ARG INTEL_VPL_GPU_RT_VERSION=intel-onevpl-24.3.4
+## ffmpeg           Ref: https://ffmpeg.org/releases/
+## obuparse         Ref: https://github.com/dwbuiten/obuparse
+ARG FFMPEG_VERSION=7.1 \
+    OBUPARSE_VERSION=478adcc872d5a8a19443e87910508e261a0a60ba
 
 # retry dns and some http codes that might be transient errors
 ARG WGET_OPTS="--retry-on-host-error --retry-on-http-error=429,500,502,503"
@@ -66,7 +72,8 @@ RUN set -eux && \
     gnupg \
     less \
     tzdata \
-    wget && \
+    wget \
+    && \
     \
     # Cleanup \
     apt-get -y autoremove && \
@@ -78,7 +85,8 @@ RUN set -eux && \
     curl -fsSL "https://deb.nodesource.com/setup_${NODE_VERSION}.x" | bash - && \
     apt-get update && \
     apt-get install -y --no-install-recommends \
-    nodejs &&\
+    nodejs \
+    && \
     \
     # Cleanup \
     apt-get -y autoremove && \
@@ -106,23 +114,26 @@ ENV LD_LIBRARY_PATH="${PREFIX}/lib:/opt/modules/lib:/usr/local/lib"
 ENV PKG_CONFIG_PATH="${PREFIX}/share/pkgconfig:${PREFIX}/lib/pkgconfig:/opt/modules/lib/pkgconfig"
 
 # AviSynthPlus
-ARG AVISYNTHPLUS_VERSION
-ARG LSMASH_VERSION
-ARG LSMASHWORKS_VERSION
-ARG OBUPARSE_VERSION
+ARG AVISYNTHPLUS_VERSION \
+    LSMASH_VERSION \
+    LSMASHWORKS_VERSION
 
 # VMAF
-## Ref: https://github.com/Netflix/vmaf/releases
-ARG VMAF_VERSION=3.0.0
-ARG VMAF_URL="https://github.com/Netflix/vmaf/archive/refs/tags/v${VMAF_VERSION}.tar.gz"
-ARG VMAF_SHA256=7178c4833639e6b989ecae73131d02f70735fdb3fc2c7d84bc36c9c3461d93b1
+ARG VMAF_VERSION \
+    VMAF_URL \
+    VMAF_SHA256
+
+# Intel
+ARG INTEL_GMMLIB \
+    INTEL_MEDIA_DRIVER \
+    INTEL_LIBVA_VERSION \
+    INTEL_LIBVPL_VERSION \
+    INTEL_VPL_GPU_RT_VERSION
 
 # FFmpeg
-ARG FFMPEG_VERSION
-ARG FFMPEG_URL="https://ffmpeg.org/releases/ffmpeg-${FFMPEG_VERSION}.tar.bz2"
-ARG INTEL_LIBVPL_VERSION
-ARG INTEL_VPL_GPU_RT_VERSION
-ARG LIBVA_VERSION
+ARG FFMPEG_VERSION \
+    FFMPEG_URL="https://ffmpeg.org/releases/ffmpeg-${FFMPEG_VERSION}.tar.bz2" \
+    OBUPARSE_VERSION
 
 # Create directory
 RUN set -eux && mkdir -p "${PREFIX}" "${PREFIX}/bin" "${PREFIX}/include" "${PREFIX}/lib" "${PREFIX}/lib/pkgconfig" "${PREFIX}/src"
@@ -135,56 +146,76 @@ RUN set -eux && \
     autoconf \
     automake \
     build-essential \
-    ca-certificates \
     checkinstall \
     cmake \
-    curl \
+    doxygen \
     git-core \
-    gnupg \
-    libass-dev \
-    libboost-all-dev \
-    libfdk-aac-dev \
-    libfreetype6-dev \
-    libgnutls28-dev \
-    libmp3lame-dev \
-    libtool \
-    libunistring-dev \
-    libx264-dev \
     meson \
+    nasm \
     ninja-build \
     pkg-config \
     texinfo \
-    wget \
+    xxd \
     yasm \
-    zlib1g-dev
-# Do not apt clean to resolve dependencies
+    zlib1g-dev \
+    && \
+    \
+    # Cleanup \
+    apt-get -y autoremove && \
+    apt-get -y clean && \
+    rm -rf /var/lib/apt/lists/*
 
 ## Create Working directory
 RUN mkdir -p "${PREFIX}"
 
-## VMAF
-RUN apt-get -y install --no-install-recommends doxygen xxd
+## Library Dependencies
+RUN set -eux && \
+    apt-get update && \
+    apt-get -y install --no-install-recommends \
+    libaom-dev \
+    libaribb24-dev \
+    libass-dev \
+    libdav1d-dev \
+    libfdk-aac-dev \
+    libfreetype6-dev \
+    libmp3lame-dev \
+    libopus-dev \
+    libvorbis-dev \
+    libvpx-dev \
+    libx264-dev \
+    libx265-dev libnuma-dev \
+    \
+    ## join_logo_scp
+    libboost-filesystem-dev \
+    libboost-program-options-dev \
+    libboost-system-dev \
+    libgnutls28-dev \
+    libtool \
+    libunistring-dev \
+    && \
+    \
+    # Cleanup \
+    apt-get -y autoremove && \
+    apt-get -y clean && \
+    rm -rf /var/lib/apt/lists/*
 
-## NASM
-RUN apt-get -y install --no-install-recommends nasm
-
-## libx264
-RUN apt-get -y install --no-install-recommends libx264-dev
-
-## libx265
-RUN apt-get -y install --no-install-recommends libx265-dev libnuma-dev
-
-## libfdk-aac
-RUN apt-get -y install --no-install-recommends libfdk-aac-dev
-
-## libaom
-RUN apt-get -y install --no-install-recommends libaom-dev libdav1d-dev
-
-## libaribb24
-RUN apt-get -y install --no-install-recommends libaribb24-dev
-
-## avisynth+
-RUN apt-get -y install --no-install-recommends checkinstall
+## AviSynth+
+RUN set -eux && \
+    cd "${PREFIX}" && \
+    git clone --depth 1 -b ${AVISYNTHPLUS_VERSION} https://github.com/AviSynth/AviSynthPlus.git && \
+    cd AviSynthPlus && \
+    mkdir avisynth-build && \
+    cd avisynth-build && \
+    cmake ../ -G Ninja && \
+    ninja && \
+    checkinstall --pkgname=avisynth --pkgversion="$(grep -r \
+    Version avs_core/avisynth.pc | cut -f2 -d " ")-$(date --rfc-3339=date | \
+    sed 's/-//g')-git" --backup=no --deldoc=yes --delspec=yes --deldesc=yes \
+    --strip=yes --stripso=yes --addso=yes --fstrans=no --default ninja install && \
+    ninja -v -t clean && \
+    pkg-config --exists avisynth && \
+    cd "${PREFIX}" && \
+    mv -v AviSynthPlus "${PREFIX}/src"
 
 ## libvmaf
 RUN set -eux && \
@@ -205,23 +236,65 @@ RUN set -eux && \
     cd "${PREFIX}" && \
     mv -v vmaf* "${PREFIX}/src"
 
-## AviSynth+
+## libva
+RUN set -eux && \
+    apt-get update && \
+    apt-get -y install --no-install-recommends \
+    libdrm-dev \
+    && \
+    \
+    # Cleanup \
+    apt-get -y autoremove && \
+    apt-get -y clean && \
+    rm -rf /var/lib/apt/lists/* && \
+    \
+    cd "${PREFIX}" && \
+    git clone --depth 1 -b ${INTEL_LIBVA_VERSION} https://github.com/intel/libva.git && \
+    cd libva && \
+    ./autogen.sh \
+    --prefix=/usr \
+    --libdir="${PREFIX}/lib" && \
+    make -j$(nproc) && \
+    make install && \
+    make clean && \
+    pkg-config --exists libva && \
+    cd "${PREFIX}" && \
+    mv -v libva "${PREFIX}/src"
+
+## gmmlib
 RUN set -eux && \
     cd "${PREFIX}" && \
-    git clone --depth 1 -b ${AVISYNTHPLUS_VERSION} https://github.com/AviSynth/AviSynthPlus.git && \
-    cd AviSynthPlus && \
-    mkdir avisynth-build && \
-    cd avisynth-build && \
-    cmake ../ -G Ninja && \
-    ninja && \
-    checkinstall --pkgname=avisynth --pkgversion="$(grep -r \
-    Version avs_core/avisynth.pc | cut -f2 -d " ")-$(date --rfc-3339=date | \
-    sed 's/-//g')-git" --backup=no --deldoc=yes --delspec=yes --deldesc=yes \
-    --strip=yes --stripso=yes --addso=yes --fstrans=no --default ninja install && \
-    ninja -v -t clean && \
-    pkg-config --exists avisynth && \
+    git clone --depth 1 -b ${INTEL_GMMLIB} https://github.com/intel/gmmlib.git && \
+    cd gmmlib && \
+    mkdir -p build && \
+    cd build && \
+    cmake \
+        -DCMAKE_BUILD_TYPE=Release \
+        -DCMAKE_INSTALL_PREFIX="${PREFIX}" \
+        .. && \
+    make -j$(nproc) && \
+    make install && \
+    make clean && \
+    pkg-config --exists igdgmm && \
     cd "${PREFIX}" && \
-    mv -v AviSynthPlus "${PREFIX}/src"
+    mv -v gmmlib "${PREFIX}/src"
+
+## media-driver
+RUN set -eux && \
+    cd "${PREFIX}" && \
+    git clone --depth 1 -b ${INTEL_MEDIA_DRIVER} https://github.com/intel/media-driver.git && \
+    cd media-driver && \
+    mkdir -p build && \
+    cd build && \
+    cmake \
+        -DLIBVA_DRIVERS_PATH="${PREFIX}/lib/dri" \
+        .. && \
+    make -j$(nproc) && \
+    make install && \
+    make clean && \
+    pkg-config --exists igfxcmrt && \
+    cd "${PREFIX}" && \
+    mv -v media-driver "${PREFIX}/src"
 
 ## Intel QSV libvpl
 RUN set -eux && \
@@ -235,8 +308,8 @@ RUN set -eux && \
         -G"Unix Makefiles" \
         -DCMAKE_BUILD_TYPE=Release \
         -DCMAKE_VERBOSE_MAKEFILE=ON \
-        -DCMAKE_INSTALL_LIBDIR=lib \
-        -DCMAKE_INSTALL_PREFIX=/usr/local \
+        -DCMAKE_INSTALL_PREFIX=/usr \
+        -DCMAKE_INSTALL_LIBDIR="${PREFIX}/lib" \
         -DBUILD_SHARED_LIBS=OFF \
         -DBUILD_TESTS=OFF \
         -DENABLE_WARNING_AS_ERROR=ON && \
@@ -247,94 +320,21 @@ RUN set -eux && \
     cd "${PREFIX}" && \
     mv -v libvpl "${PREFIX}/src"
 
-RUN set -eux && \
-    apt-get -y install --no-install-recommends \
-    libdrm-dev && \
-    cd "${PREFIX}" && \
-    git clone --depth 1 -b ${LIBVA_VERSION} https://github.com/intel/libva.git && \
-    cd libva && \
-    ./autogen.sh \
-    --prefix=/usr \
-    --libdir=/usr/lib/x86_64-linux-gnu && \
-    make -j$(nproc) && \
-    make install && \
-    make clean && \
-    pkg-config --exists libva && \
-    cd "${PREFIX}" && \
-    mv -v libva "${PREFIX}/src"
-
 ## Intel QSV VPL Runtime
 RUN set -eux && \
     cd "${PREFIX}" && \
     git clone --depth 1 -b ${INTEL_VPL_GPU_RT_VERSION} https://github.com/intel/vpl-gpu-rt.git && \
     cd vpl-gpu-rt && \
     mkdir -p build && cd build && \
-    cmake .. && \
+    cmake \
+        -DCMAKE_INSTALL_LIBDIR="${PREFIX}/lib" \
+        -DCMAKE_INSTALL_PREFIX=/usr \
+    .. && \
     make -j$(nproc) && \
     make install && \
     make clean && \
-    pkg-config --exists libva && \
     cd "${PREFIX}" && \
     mv -v vpl-gpu-rt "${PREFIX}/src"
-
-## FFmpeg
-# ldflags stack-size=2097152 is to increase default stack size from 128KB (musl default) to something
-# more similar to glibc (2MB). This fixing segfault with libaom-av1 and libsvtav1 as they seems to pass
-# large things on the stack.
-#
-# ldfalgs -Wl,--allow-multiple-definition is a workaround for linking with multiple rust staticlib to
-# not cause collision in toolchain symbols, see comment in checkdupsym script for details.
-# Ref: https://github.com/wader/static-ffmpeg/blob/master/Dockerfile
-RUN set -eux && \
-    cd "${PREFIX}" && \
-    wget ${WGET_OPTS} -O ffmpeg.tar.bz2     "${FFMPEG_URL}" && \
-    wget ${WGET_OPTS} -O ffmpeg.tar.bz2.asc "${FFMPEG_URL}.asc" && \
-    curl -sfSL https://ffmpeg.org/ffmpeg-devel.asc | gpg --import && \
-    gpg --verify ffmpeg.tar.bz2.asc ffmpeg.tar.bz2 && \
-    \
-    tar -xf ffmpeg.tar.bz2 && \
-    cd ffmpeg-* && \
-    ./configure \
-    # encoder & decoder
-    --enable-avisynth \
-    --enable-libaom \
-    --enable-libaribb24 \
-    --enable-libass \
-    --enable-libdav1d \
-    --enable-libfdk-aac \
-    --enable-libfreetype \
-    --enable-libmp3lame \
-    --enable-libvmaf \
-    --enable-libvpl \
-    --enable-libx264 \
-    --enable-libx265 \
-    \
-    # License
-    --enable-gpl \
-    --enable-nonfree \
-    --enable-version3 \
-    \
-    # small binary & static build
-    --disable-debug \
-    --disable-doc \
-    --disable-ffplay \
-    --disable-shared \
-    --enable-small \
-    --enable-static \
-    \
-    # https://trac.ffmpeg.org/wiki/CompilationGuide/Ubuntu
-    --extra-libs="-lpthread -lm" \
-    --pkg-config-flags="--static" \
-    \
-    --extra-cflags="-fopenmp" \
-    --extra-ldflags="-fopenmp -Wl,--allow-multiple-definition -Wl,-z,stack-size=2097152" \
-    --toolchain=hardened > ffmpeg_configure.log && \
-    make -j$(nproc) && \
-    make install && \
-    find . -type f -name '*.pc' -not -path '*doc/*' -exec cp -Lv '{}' ${PREFIX}/lib/pkgconfig \; && \
-    make clean && \
-    cd "${PREFIX}" && \
-    mv -v ffmpeg* "${PREFIX}/src"
 
 ## Install obuparse
 RUN set -eux && \
@@ -363,6 +363,70 @@ Version: ${OBUPARSE_VERSION}
 Cflags: -I\${includedir}
 _DOC_
 EOF
+
+## FFmpeg
+# ldflags stack-size=2097152 is to increase default stack size from 128KB (musl default) to something
+# more similar to glibc (2MB). This fixing segfault with libaom-av1 and libsvtav1 as they seems to pass
+# large things on the stack.
+#
+# ldfalgs -Wl,--allow-multiple-definition is a workaround for linking with multiple rust staticlib to
+# not cause collision in toolchain symbols, see comment in checkdupsym script for details.
+# Ref: https://github.com/wader/static-ffmpeg/blob/master/Dockerfile
+RUN set -eux && \
+    cd "${PREFIX}" && \
+    wget ${WGET_OPTS} -O ffmpeg.tar.bz2     "${FFMPEG_URL}" && \
+    wget ${WGET_OPTS} -O ffmpeg.tar.bz2.asc "${FFMPEG_URL}.asc" && \
+    curl -sfSL https://ffmpeg.org/ffmpeg-devel.asc | gpg --import && \
+    gpg --verify ffmpeg.tar.bz2.asc ffmpeg.tar.bz2 && \
+    \
+    tar -xf ffmpeg.tar.bz2 && \
+    cd ffmpeg-* && \
+    ./configure \
+    # encoder & decoder
+    --enable-avisynth \
+    --enable-libaom \
+    --enable-libaribb24 \
+    --enable-libass \
+    --enable-libdav1d \
+    --enable-libfdk-aac \
+    --enable-libfreetype \
+    --enable-libmp3lame \
+    --enable-libopus \
+    --enable-libvmaf \
+    --enable-libvorbis \
+    --enable-libvpl \
+    --enable-libvpx \
+    --enable-libx264 \
+    --enable-libx265 \
+    --enable-vaapi \
+    \
+    # License
+    --enable-gpl \
+    --enable-nonfree \
+    --enable-version3 \
+    \
+    # small binary & static build
+    --disable-debug \
+    --disable-doc \
+    --disable-ffplay \
+    --disable-shared \
+    --enable-small \
+    --enable-static \
+    --enable-stripping \
+    \
+    # https://trac.ffmpeg.org/wiki/CompilationGuide/Ubuntu
+    --extra-libs="-lpthread -lm" \
+    --pkg-config-flags="--static" \
+    \
+    --extra-cflags="-fopenmp" \
+    --extra-ldflags="-fopenmp -Wl,--allow-multiple-definition -Wl,-z,stack-size=2097152" \
+    --toolchain=hardened | tee ffmpeg_configure.log && \
+    make -j$(nproc) && \
+    make install && \
+    find . -type f -name '*.pc' -not -path '*doc/*' -exec cp -Lv '{}' ${PREFIX}/lib/pkgconfig \; && \
+    make clean && \
+    cd "${PREFIX}" && \
+    mv -v ffmpeg* "${PREFIX}/src"
 
 ## l-smash
 RUN set -eux && \
@@ -413,23 +477,6 @@ Version: ${LSMASHWORKS_VERSION}
 Libs: -L/usr/local/lib/avisynth
 _DOC_
 EOF
-
-## FFmpeg runtime package list saved
-RUN set -eux && \
-    apt-file update && \
-    ldd /usr/local/bin/ffmpeg /usr/local/bin/ffprobe /usr/local/lib/avisynth/liblsmashsource.so | \
-    awk -F ' => ' '{print $2}' | awk -F' ' '{print $1}' | \
-    tr -d '\t' | sort | uniq | grep -v -E '^/opt/ffmpeg' | xargs -I'{}' cp -Lv '{}' ${PREFIX}/lib
-
-RUN set -eux && \
-    ls -lah /usr/local/bin && \
-    ffmpeg -version
-
-RUN set -eux && \
-    ffmpeg -hide_banner -hwaccels && \
-    ffmpeg -hide_banner -buildconf && \
-    for i in decoders encoders; do echo ${i}:; ffmpeg -hide_banner -${i} | \
-    egrep -i "[x|h]264|[x|h]265|av1|cuvid|hevc|nv[dec|enc]|qsv|vaapi|vp9"; done
 
 ## join_logo_scp_trial build
 COPY modules    "${PREFIX}/src/JLSTSL/modules"
@@ -483,6 +530,21 @@ RUN set -eux && \
     cd /join_logo_scp_trial && \
     npm link
 
+## FFmpeg runtime package list saved
+RUN set -eux && \
+    apt-file update && \
+    ldd /usr/local/bin/ffmpeg /usr/local/bin/ffprobe /usr/local/lib/avisynth/liblsmashsource.so | \
+    awk -F ' => ' '{print $2}' | awk -F' ' '{print $1}' | \
+    tr -d '\t' | sort | uniq | grep -v -E '^/opt/ffmpeg' | xargs -I'{}' cp -Lv '{}' ${PREFIX}/lib
+
+RUN set -eux && \
+    ls -lah /usr/local/bin && \
+    ffmpeg -version && \
+    ffmpeg -hide_banner -hwaccels && \
+    ffmpeg -hide_banner -buildconf && \
+    for i in decoders encoders; do echo ${i}:; ffmpeg -hide_banner -${i} | \
+    egrep -i "[x|h]264|[x|h]265|av1|cuvid|hevc|qsv|vaapi|vp9"; done
+
 # Archive source code
 RUN set -eux && \
     cd "${PREFIX}" && \
@@ -501,36 +563,23 @@ ARG PYTHONUNBUFFERED
 ENV LD_LIBRARY_PATH="/opt/ffmpeg/lib:/opt/modules/lib:/usr/local/lib"
 ENV PKG_CONFIG_PATH="/opt/ffmpeg/share/pkgconfig:/opt/ffmpeg/lib/pkgconfig:/opt/modules/lib/pkgconfig"
 
-# Intel Driver
-RUN set -eux && \
-    apt-get update && \
-    apt-get -y install --no-install-recommends \
-    intel-media-va-driver \
-    vainfo && \
-    \
-    # Cleanup \
-    apt-get -y autoremove && \
-    apt-get -y clean && \
-    rm -rf /var/lib/apt/lists/*
-
 # FFmpeg runtime
 COPY --from=build-ffmpeg /usr/local/bin/ffmpeg      /usr/local/bin/ffmpeg
 COPY --from=build-ffmpeg /usr/local/bin/ffprobe     /usr/local/bin/ffprobe
 COPY --from=build-ffmpeg /opt/ffmpeg                /opt/ffmpeg
 COPY --from=build-ffmpeg /usr/local/lib/avisynth    /usr/local/lib/avisynth
 
-## check FFmpeg exec
+# check FFmpeg library
 RUN set -eux && \
     ls -lah /opt/ffmpeg/lib && \
     ls -lah /usr/local/bin && \
     ffmpeg -version
 
-# check FFmpeg library
-RUN set -eux && \
+    RUN set -eux && \
     ffmpeg -hide_banner -hwaccels && \
     ffmpeg -hide_banner -buildconf && \
     for i in decoders encoders; do echo ${i}:; ffmpeg -hide_banner -${i} | \
-    egrep -i "[x|h]264|[x|h]265|av1|cuvid|hevc|nv[dec|enc]|qsv|vaapi|vp9"; done
+    egrep -i "[x|h]264|[x|h]265|av1|cuvid|hevc|qsv|vaapi|vp9"; done
 
 COPY --from=build-ffmpeg /join_logo_scp_trial      /join_logo_scp_trial
 WORKDIR "/join_logo_scp_trial"

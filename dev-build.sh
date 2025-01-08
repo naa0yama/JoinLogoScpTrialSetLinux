@@ -12,7 +12,7 @@ fi
 
 time docker build -t "tmp-${DOCKER_TAG}" -f "Dockerfile.${DOCKER_TAG}" .
 
-if [ "${DOCKER_ROOT}" == "yes" ]; then
+if [ "${DOCKER_ROOT}" == "root" ]; then
   DOCKER_OPTS=""
 else
   DOCKER_OPTS="--user $(id -u):$(id -g)"

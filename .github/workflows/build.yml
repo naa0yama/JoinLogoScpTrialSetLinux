@@ -47,8 +47,6 @@ jobs:
       max-parallel: 5
       matrix:
         type:
-          - cuda
-          - ubuntu2204
           - ubuntu2404
     permissions:
       contents: read
