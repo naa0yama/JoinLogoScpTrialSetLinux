@@ -15,9 +15,11 @@ ARG NODE_VERSION=18
 ## AviSynthPlus     Ref: https://github.com/AviSynth/AviSynthPlus/releases
 ## l-smash          Ref: https://github.com/Mr-Ojii/l-smash
 ## L-SMASH-Works    Ref: https://github.com/Mr-Ojii/L-SMASH-Works
+## obuparse         Ref: https://github.com/dwbuiten/obuparse
 ARG AVISYNTHPLUS_VERSION=v3.7.3 \
     LSMASH_VERSION=315b4747d759e336ef30b18e93f2e676810e5a73 \
-    LSMASHWORKS_VERSION=2119ea45f248f2c53946e34bfe88728aa770464f
+    LSMASHWORKS_VERSION=2119ea45f248f2c53946e34bfe88728aa770464f \
+    OBUPARSE_VERSION=918524abdc19b6582d853c03373d8e2e0b9f11ee # 2024-12-12
 
 # VMAF
 ## Ref: https://github.com/Netflix/vmaf/releases
@@ -39,9 +41,11 @@ ARG INTEL_GMMLIB=intel-gmmlib-22.6.0 \
 
 # FFmpeg
 ## ffmpeg           Ref: https://ffmpeg.org/releases/
-## obuparse         Ref: https://github.com/dwbuiten/obuparse
+## dav1d            Ref: https://code.videolan.org/videolan/dav1d
+## SVT-AV1          Ref: https://gitlab.com/AOMediaCodec/SVT-AV1
 ARG FFMPEG_VERSION=7.1 \
-    OBUPARSE_VERSION=478adcc872d5a8a19443e87910508e261a0a60ba
+    AV1_DAV1D_VERSION=1.5.1 \
+    AV1_SVTAV1_VERSION=v2.3.0
 
 # retry dns and some http codes that might be transient errors
 ARG WGET_OPTS="--retry-on-host-error --retry-on-http-error=429,500,502,503"
@@ -119,7 +123,8 @@ ENV PKG_CONFIG_PATH="${PREFIX}/share/pkgconfig:${PREFIX}/lib/pkgconfig:/opt/modu
 # AviSynthPlus
 ARG AVISYNTHPLUS_VERSION \
     LSMASH_VERSION \
-    LSMASHWORKS_VERSION
+    LSMASHWORKS_VERSION \
+    OBUPARSE_VERSION
 
 # VMAF
 ARG VMAF_VERSION \
@@ -136,7 +141,8 @@ ARG INTEL_GMMLIB \
 # FFmpeg
 ARG FFMPEG_VERSION \
     FFMPEG_URL="https://ffmpeg.org/releases/ffmpeg-${FFMPEG_VERSION}.tar.bz2" \
-    OBUPARSE_VERSION
+    AV1_DAV1D_VERSION \
+    AV1_SVTAV1_VERSION
 
 # Create directory
 RUN set -eux && mkdir -p "${PREFIX}" "${PREFIX}/bin" "${PREFIX}/include" "${PREFIX}/lib" "${PREFIX}/lib/pkgconfig" "${PREFIX}/src"
@@ -168,9 +174,6 @@ RUN set -eux && \
     apt-get -y clean && \
     rm -rf /var/lib/apt/lists/*
 
-## Create Working directory
-RUN mkdir -p "${PREFIX}"
-
 ## Library Dependencies
 RUN set -eux && \
     apt-get update && \
@@ -178,12 +181,9 @@ RUN set -eux && \
     libaom-dev \
     libaribb24-dev \
     libass-dev \
-    libdav1d-dev \
-    libfdk-aac-dev \
     libfreetype6-dev \
     libmp3lame-dev \
     libopus-dev \
-    libvorbis-dev \
     libvpx-dev \
     libx264-dev \
     libx265-dev libnuma-dev \
@@ -239,7 +239,7 @@ RUN set -eux && \
     cd "${PREFIX}" && \
     mv -v vmaf* "${PREFIX}/src"
 
-## libva
+## Intel QSV | libva
 RUN set -eux && \
     apt-get update && \
     apt-get -y install --no-install-recommends \
@@ -264,7 +264,7 @@ RUN set -eux && \
     cd "${PREFIX}" && \
     mv -v libva "${PREFIX}/src"
 
-## gmmlib
+## Intel QSV | gmmlib
 RUN set -eux && \
     cd "${PREFIX}" && \
     git clone --depth 1 -b ${INTEL_GMMLIB} https://github.com/intel/gmmlib.git && \
@@ -282,7 +282,7 @@ RUN set -eux && \
     cd "${PREFIX}" && \
     mv -v gmmlib "${PREFIX}/src"
 
-## media-driver
+## Intel QSV | media-driver
 RUN set -eux && \
     cd "${PREFIX}" && \
     git clone --depth 1 -b ${INTEL_MEDIA_DRIVER} https://github.com/intel/media-driver.git && \
@@ -299,7 +299,7 @@ RUN set -eux && \
     cd "${PREFIX}" && \
     mv -v media-driver "${PREFIX}/src"
 
-## Intel QSV libvpl
+## Intel QSV | libvpl
 RUN set -eux && \
     cd "${PREFIX}" && \
     mkdir -p libvpl && cd libvpl && \
@@ -323,7 +323,7 @@ RUN set -eux && \
     cd "${PREFIX}" && \
     mv -v libvpl "${PREFIX}/src"
 
-## Intel QSV VPL Runtime
+## Intel QSV | VPL Runtime
 RUN set -eux && \
     cd "${PREFIX}" && \
     git clone --depth 1 -b ${INTEL_VPL_GPU_RT_VERSION} https://github.com/intel/vpl-gpu-rt.git && \
@@ -339,33 +339,39 @@ RUN set -eux && \
     cd "${PREFIX}" && \
     mv -v vpl-gpu-rt "${PREFIX}/src"
 
-## Install obuparse
+## Install dav1d
 RUN set -eux && \
     cd "${PREFIX}" && \
-    mkdir -p obuparse && \
-    cd obuparse && \
-    git init && \
-    git remote add origin https://github.com/dwbuiten/obuparse.git && \
-    git fetch --depth 1 origin ${OBUPARSE_VERSION} && \
-    git checkout FETCH_HEAD && \
-    sed -i'' -e "s@PREFIX=/usr/local@PREFIX=${PREFIX}@g" Makefile && \
+    git clone --depth 1 -b ${AV1_DAV1D_VERSION} https://code.videolan.org/videolan/dav1d.git && \
+    mkdir dav1d/build && \
+    cd dav1d/build && \
+    meson setup \
+    -Denable_tools=false \
+    -Denable_tests=false \
+    --default-library=static .. \
+    --prefix "${PREFIX}" \
+    --libdir="${PREFIX}/lib" && \
+    ninja && \
+    ninja install && \
+    cd "${PREFIX}" && \
+    mv -v dav1d "${PREFIX}/src"
+
+## Install SVT-AV1
+RUN set -eux && \
+    cd "${PREFIX}" && \
+    git clone --depth 1 -b ${AV1_SVTAV1_VERSION} https://gitlab.com/AOMediaCodec/SVT-AV1.git && \
+    mkdir SVT-AV1/build && \
+    cd SVT-AV1/build && \
+    cmake -G "Unix Makefiles" \
+    -DCMAKE_INSTALL_PREFIX="${PREFIX}" \
+    -DCMAKE_BUILD_TYPE=Release \
+    -DBUILD_DEC=OFF \
+    -DBUILD_SHARED_LIBS=OFF .. && \
     make -j$(nproc) && \
     make install && \
     make clean && \
     cd "${PREFIX}" && \
-    mv -v obuparse "${PREFIX}/src"
-RUN <<EOF
-cat <<- _DOC_ > ${PREFIX}/lib/pkgconfig/obuparse.pc
-prefix=${PREFIX}
-includedir=\${prefix}/include
-
-Name: obuparse
-Description: A simple and portable single file AV1 OBU parser.
-Version: ${OBUPARSE_VERSION}
-
-Cflags: -I\${includedir}
-_DOC_
-EOF
+    mv -v SVT-AV1 "${PREFIX}/src"
 
 ## FFmpeg
 # ldflags stack-size=2097152 is to increase default stack size from 128KB (musl default) to something
@@ -391,12 +397,11 @@ RUN set -eux && \
     --enable-libaribb24 \
     --enable-libass \
     --enable-libdav1d \
-    --enable-libfdk-aac \
     --enable-libfreetype \
     --enable-libmp3lame \
     --enable-libopus \
+    --enable-libsvtav1 \
     --enable-libvmaf \
-    --enable-libvorbis \
     --enable-libvpl \
     --enable-libvpx \
     --enable-libx264 \
@@ -430,6 +435,34 @@ RUN set -eux && \
     make clean && \
     cd "${PREFIX}" && \
     mv -v ffmpeg* "${PREFIX}/src"
+
+## Install obuparse
+RUN set -eux && \
+    cd "${PREFIX}" && \
+    mkdir -p obuparse && \
+    cd obuparse && \
+    git init && \
+    git remote add origin https://github.com/dwbuiten/obuparse.git && \
+    git fetch --depth 1 origin ${OBUPARSE_VERSION} && \
+    git checkout FETCH_HEAD && \
+    sed -i'' -e "s@PREFIX=/usr/local@PREFIX=${PREFIX}@g" Makefile && \
+    make -j$(nproc) && \
+    make install && \
+    make clean && \
+    cd "${PREFIX}" && \
+    mv -v obuparse "${PREFIX}/src"
+RUN <<EOF
+cat <<- _DOC_ > ${PREFIX}/lib/pkgconfig/obuparse.pc
+prefix=${PREFIX}
+includedir=\${prefix}/include
+
+Name: obuparse
+Description: A simple and portable single file AV1 OBU parser.
+Version: ${OBUPARSE_VERSION}
+
+Cflags: -I\${includedir}
+_DOC_
+EOF
 
 ## l-smash
 RUN set -eux && \
