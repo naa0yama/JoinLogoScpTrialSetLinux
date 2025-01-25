@@ -179,7 +179,6 @@ RUN set -eux && \
     libaribb24-dev \
     libass-dev \
     libdav1d-dev \
-    libfdk-aac-dev \
     libfreetype6-dev \
     libmp3lame-dev \
     libopus-dev \
@@ -391,7 +390,6 @@ RUN set -eux && \
     --enable-libaribb24 \
     --enable-libass \
     --enable-libdav1d \
-    --enable-libfdk-aac \
     --enable-libfreetype \
     --enable-libmp3lame \
     --enable-libopus \
