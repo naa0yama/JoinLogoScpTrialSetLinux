@@ -12,27 +12,26 @@ ARG NODE_ENV="production"
 ARG NODE_VERSION=18
 
 # AviSynthPlus
-## AviSynthPlus     Ref: https://github.com/AviSynth/AviSynthPlus/releases
-## l-smash          Ref: https://github.com/Mr-Ojii/l-smash
-## L-SMASH-Works    Ref: https://github.com/Mr-Ojii/L-SMASH-Works
-## obuparse         Ref: https://github.com/dwbuiten/obuparse
+## AviSynthPlus           Ref: https://github.com/AviSynth/AviSynthPlus/releases
+## l-smash                Ref: https://github.com/Mr-Ojii/l-smash
+## L-SMASH-Works          Ref: https://github.com/Mr-Ojii/L-SMASH-Works
+## obuparse               Ref: https://github.com/dwbuiten/obuparse
 ARG AVISYNTHPLUS_VERSION=v3.7.3 \
     LSMASH_VERSION=315b4747d759e336ef30b18e93f2e676810e5a73 \
     LSMASHWORKS_VERSION=2119ea45f248f2c53946e34bfe88728aa770464f \
     OBUPARSE_VERSION=918524abdc19b6582d853c03373d8e2e0b9f11ee # 2024-12-12
 
-# VMAF
-## Ref: https://github.com/Netflix/vmaf/releases
+## VMAF                   Ref: https://github.com/Netflix/vmaf/releases
 ARG VMAF_VERSION=3.0.0
 ARG VMAF_URL="https://github.com/Netflix/vmaf/archive/refs/tags/v${VMAF_VERSION}.tar.gz"
 ARG VMAF_SHA256=7178c4833639e6b989ecae73131d02f70735fdb3fc2c7d84bc36c9c3461d93b1
 
 # Intel
-## gmmlib           Ref: https://github.com/intel/gmmlib/releases
-## media-driver     Ref: https://github.com/intel/media-driver/releases
-## libva            Ref: https://github.com/intel/libva/releases
-## libvpl           Ref: https://github.com/intel/libvpl/releases
-## vpl-gpu-rt       Ref: https://github.com/intel/vpl-gpu-rt/releases
+## gmmlib                 Ref: https://github.com/intel/gmmlib/releases
+## media-driver           Ref: https://github.com/intel/media-driver/releases
+## libva                  Ref: https://github.com/intel/libva/releases
+## libvpl                 Ref: https://github.com/intel/libvpl/releases
+## vpl-gpu-rt             Ref: https://github.com/intel/vpl-gpu-rt/releases
 ARG INTEL_GMMLIB=intel-gmmlib-22.6.0 \
     INTEL_MEDIA_DRIVER=intel-media-24.3.4 \
     INTEL_LIBVA_VERSION=2.22.0 \
@@ -40,9 +39,9 @@ ARG INTEL_GMMLIB=intel-gmmlib-22.6.0 \
     INTEL_VPL_GPU_RT_VERSION=intel-onevpl-24.3.4
 
 # FFmpeg
-## ffmpeg           Ref: https://ffmpeg.org/releases/
-## dav1d            Ref: https://code.videolan.org/videolan/dav1d
-## SVT-AV1          Ref: https://gitlab.com/AOMediaCodec/SVT-AV1
+## ffmpeg                 Ref: https://ffmpeg.org/releases/
+## dav1d                  Ref: https://code.videolan.org/videolan/dav1d
+## SVT-AV1                Ref: https://gitlab.com/AOMediaCodec/SVT-AV1
 ARG FFMPEG_VERSION=7.1 \
     AV1_DAV1D_VERSION=1.5.1 \
     AV1_SVTAV1_VERSION=v2.3.0
