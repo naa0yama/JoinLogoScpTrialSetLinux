@@ -178,7 +178,6 @@ RUN set -eux && \
 RUN set -eux && \
     apt-get update && \
     apt-get -y install --no-install-recommends \
-    libaom-dev \
     libaribb24-dev \
     libass-dev \
     libfreetype6-dev \
@@ -375,7 +374,7 @@ RUN set -eux && \
 
 ## FFmpeg
 # ldflags stack-size=2097152 is to increase default stack size from 128KB (musl default) to something
-# more similar to glibc (2MB). This fixing segfault with libaom-av1 and libsvtav1 as they seems to pass
+# more similar to glibc (2MB). This fixing segfault with libsvtav1 as they seems to pass
 # large things on the stack.
 #
 # ldfalgs -Wl,--allow-multiple-definition is a workaround for linking with multiple rust staticlib to
@@ -393,7 +392,6 @@ RUN set -eux && \
     ./configure \
     # encoder & decoder
     --enable-avisynth \
-    --enable-libaom \
     --enable-libaribb24 \
     --enable-libass \
     --enable-libdav1d \
