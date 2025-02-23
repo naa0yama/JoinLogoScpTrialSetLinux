@@ -12,7 +12,7 @@ ARG NODE_ENV="production"
 ARG NODE_VERSION=18
 
 # AviSynthPlus
-## renovate: datasource=github-releases depName=AviSynth/AviSynthPlus packageName=AviSynthPlus versioning=semver
+## renovate: datasource=github-releases packageName=AviSynth/AviSynthPlus versioning=semver
 ARG AVISYNTHPLUS_VERSION=v3.7.3
 ## renovate: datasource=git-refs depName=Mr-Ojii/l-smash packageName=l-smash branch=master registryUrl=https://github.com/Mr-Ojii/l-smash.git
 ARG LSMASH_VERSION=315b4747d759e336ef30b18e93f2e676810e5a73
@@ -22,15 +22,15 @@ ARG LSMASHWORKS_VERSION=fa20c138f7dfe6c28115529c5723ffd1c45c340b
 ARG OBUPARSE_VERSION=918524abdc19b6582d853c03373d8e2e0b9f11ee
 
 # Intel
-## renovate: datasource=github-tags depName=intel/gmmlib packageName=gmmlib versioning=semver
+## renovate: datasource=github-tags packageName=intel/gmmlib versioning=semver
 ARG INTEL_GMMLIB_VERSION=intel-gmmlib-22.6.0
-## renovate: datasource=github-releases depName=intel/media-driver packageName=media-driver
+## renovate: datasource=github-releases packageName=intel/media-driver
 ARG INTEL_MEDIA_DRIVER_VERSION=intel-media-24.3.4
-## renovate: datasource=github-releases depName=intel/libva packageName=libva versioning=semver
+## renovate: datasource=github-releases packageName=intel/libva versioning=semver
 ARG INTEL_LIBVA_VERSION=2.22.0
-## renovate: datasource=github-releases depName=intel/libvpl packageName=libvpl versioning=semver
+## renovate: datasource=github-releases packageName=intel/libvpl versioning=semver
 ARG INTEL_LIBVPL_VERSION=v2.14.0
-## renovate: datasource=github-releases depName=intel/vpl-gpu-rt packageName=vpl-gpu-rt
+## renovate: datasource=github-releases packageName=intel/vpl-gpu-rt
 ARG INTEL_VPL_GPU_RT_VERSION=intel-onevpl-24.3.4
 
 # FFmpeg

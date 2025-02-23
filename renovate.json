@@ -10,7 +10,7 @@
         "^Dockerfile.ubuntu(.*)$"
       ],
       "matchStrings": [
-        "## renovate: datasource=(?<datasource>[a-z-]+?)(?: depName=(?<depName>.+?))? packageName=(?<packageName>.+?)(versioning=(?<versioning>[a-z-]+?)|branch=(?<currentValueTemplate>[a-z-]+?)|registryUrl=(?<registryUrl>.+?)|\\s?)+\\s(?:ENV|ARG) .+?_VERSION=(?<currentValue>.+?)\\s"
+        "## renovate: datasource=(?<datasource>[a-z-]+?)(depName=(?<depName>.+?)|packageName=(?<packageName>.+?)|versioning=(?<versioning>[a-z-]+?)|branch=(?<currentValueTemplate>[a-z-]+?)|registryUrl=(?<registryUrl>.+?)|\\s?)+\\s(?:ENV|ARG) .+?_VERSION=(?<currentValue>.+?)\\s"
       ]
     }
   ]
