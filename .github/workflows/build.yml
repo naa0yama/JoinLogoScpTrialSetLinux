@@ -122,19 +122,18 @@ jobs:
             console.log('end run')
 
       - name: Generate new pre-release tag
-        id: new_tag
         run: |
           TODAY=$(date +'%y.%m.%d')
           PRE_TAG=$(git tag --sort=creatordate | grep -E "^v[0-9]{2}\.[0-9]{2}\.[0-9]{2}-beta[0-9]+$" | tail -n 1)
           if [ "${PRE_TAG}" = "" ]; then
-            NEW_TAG="${TODAY}-beta1"
+            NEW_TAG="v${TODAY}-beta1"
           else
             PRE_TAG_DATE=$(echo "${PRE_TAG}" | cut -d '-' -f 1)
             if [ "$PRE_TAG_DATE" = "$TODAY" ]; then
               PRE_TAG_VERSION=$(echo "${PRE_TAG}" | cut -d '-' -f 2- | sed 's/beta//g')
-              NEW_TAG="${TODAY}-beta$((PRE_TAG_VERSION + 1))"
+              NEW_TAG="v${TODAY}-beta$((PRE_TAG_VERSION + 1))"
             else
-              NEW_TAG="${TODAY}-beta1"
+              NEW_TAG="v${TODAY}-beta1"
             fi
           fi
           echo "NEW_TAG=${NEW_TAG}" >> $GITHUB_OUTPUT
@@ -143,8 +142,8 @@ jobs:
         uses: softprops/action-gh-release@v2
         if: ${{ github.event.pull_request.merged == true }}
         with:
-          name: ${{ steps.new_tag.outputs.new_tag }}
-          tag_name: ${{ steps.new_tag.outputs.new_tag }}
+          name: ${{ env.NEW_TAG }}
+          tag_name: ${{ env.NEW_TAG }}
           generate_release_notes: true
           draft: false
           prerelease: true
