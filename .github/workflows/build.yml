@@ -21,6 +21,7 @@ on:
     types:
       - created
       - edited
+      - published
   workflow_dispatch:
     inputs:
       rebuild:
