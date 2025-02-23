@@ -2,5 +2,16 @@
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": [
     "local>naa0yama/renovate-config"
+  ],
+  "customManagers": [
+    {
+      "customType": "regex",
+      "fileMatch": [
+        "^Dockerfile.ubuntu(.*)$"
+      ],
+      "matchStrings": [
+        "## renovate: datasource=(?<datasource>[a-z-]+?)(?: depName=(?<depName>.+?))? packageName=(?<packageName>.+?)(versioning=(?<versioning>[a-z-]+?)|branch=(?<currentValueTemplate>[a-z-]+?)|registryUrl=(?<registryUrl>.+?)|\\s?)+\\s(?:ENV|ARG) .+?_VERSION=(?<currentValue>.+?)\\s"
+      ]
+    }
   ]
 }

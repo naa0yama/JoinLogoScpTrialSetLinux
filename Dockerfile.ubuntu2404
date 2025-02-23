@@ -12,47 +12,45 @@ ARG NODE_ENV="production"
 ARG NODE_VERSION=18
 
 # AviSynthPlus
-## AviSynthPlus               Ref: https://github.com/AviSynth/AviSynthPlus/releases
-## l-smash                    Ref: https://github.com/Mr-Ojii/l-smash/compare/315b4747d759e336ef30b18e93f2e676810e5a73...master
-## L-SMASH-Works              Ref: https://github.com/Mr-Ojii/L-SMASH-Works/compare/fa20c138f7dfe6c28115529c5723ffd1c45c340b...master
-## obuparse                   Ref: https://github.com/dwbuiten/obuparse/compare/918524abdc19b6582d853c03373d8e2e0b9f11ee...master
-ARG AVISYNTHPLUS_VERSION=v3.7.3 \
-    LSMASH_VERSION=315b4747d759e336ef30b18e93f2e676810e5a73 \
-    LSMASHWORKS_VERSION=fa20c138f7dfe6c28115529c5723ffd1c45c340b \
-    OBUPARSE_VERSION=918524abdc19b6582d853c03373d8e2e0b9f11ee
-
-## VMAF                   Ref: https://github.com/Netflix/vmaf/releases
-ARG VMAF_VERSION=3.0.0
-ARG VMAF_SHA256=7178c4833639e6b989ecae73131d02f70735fdb3fc2c7d84bc36c9c3461d93b1
+## renovate: datasource=github-releases depName=AviSynth/AviSynthPlus packageName=AviSynthPlus versioning=semver
+ARG AVISYNTHPLUS_VERSION=v3.7.3
+## renovate: datasource=git-refs depName=Mr-Ojii/l-smash packageName=l-smash branch=master registryUrl=https://github.com/Mr-Ojii/l-smash.git
+ARG LSMASH_VERSION=315b4747d759e336ef30b18e93f2e676810e5a73
+## renovate: datasource=git-refs depName=Mr-Ojii/L-SMASH-Works packageName=L-SMASH-Works branch=master registryUrl=https://github.com/Mr-Ojii/L-SMASH-Works.git
+ARG LSMASHWORKS_VERSION=fa20c138f7dfe6c28115529c5723ffd1c45c340b
+## renovate: datasource=git-refs depName=dwbuiten/obuparse packageName=obuparse branch=master registryUrl=https://github.com/dwbuiten/obuparse.git
+ARG OBUPARSE_VERSION=918524abdc19b6582d853c03373d8e2e0b9f11ee
 
 # Intel
-## gmmlib                     Ref: https://github.com/intel/gmmlib/tags
-## media-driver               Ref: https://github.com/intel/media-driver/releases
-## libva                      Ref: https://github.com/intel/libva/releases
-## libvpl                     Ref: https://github.com/intel/libvpl/releases
-## vpl-gpu-rt                 Ref: https://github.com/intel/vpl-gpu-rt/releases
-ARG INTEL_GMMLIB=intel-gmmlib-22.6.0 \
-    INTEL_MEDIA_DRIVER=intel-media-24.3.4 \
-    INTEL_LIBVA_VERSION=2.22.0 \
-    INTEL_LIBVPL_VERSION=v2.14.0 \
-    INTEL_VPL_GPU_RT_VERSION=intel-onevpl-24.3.4
+## renovate: datasource=github-tags depName=intel/gmmlib packageName=gmmlib versioning=semver
+ARG INTEL_GMMLIB_VERSION=intel-gmmlib-22.6.0
+## renovate: datasource=github-releases depName=intel/media-driver packageName=media-driver
+ARG INTEL_MEDIA_DRIVER_VERSION=intel-media-24.3.4
+## renovate: datasource=github-releases depName=intel/libva packageName=libva versioning=semver
+ARG INTEL_LIBVA_VERSION=2.22.0
+## renovate: datasource=github-releases depName=intel/libvpl packageName=libvpl versioning=semver
+ARG INTEL_LIBVPL_VERSION=v2.14.0
+## renovate: datasource=github-releases depName=intel/vpl-gpu-rt packageName=vpl-gpu-rt
+ARG INTEL_VPL_GPU_RT_VERSION=intel-onevpl-24.3.4
 
 # FFmpeg
-## ffmpeg                     Ref: https://ffmpeg.org/releases/
-## dav1d                      Ref: https://code.videolan.org/videolan/dav1d/-/tags
-## SVT-AV1                    Ref: https://gitlab.com/AOMediaCodec/SVT-AV1/-/tags
-## libvpx                     Ref: https://github.com/webmproject/libvpx/tags
-## opus                       Ref: https://github.com/xiph/opus/releases
-## x264                       Ref: https://code.videolan.org/videolan/x264/-/tree/stable?ref_type=heads
-## x265                       Ref: https://bitbucket.org/multicoreware/x265_git/branches/
-##                            Ref: https://bitbucket.org/multicoreware/x265_git/issues/969/ffmpeg-71-and-x265-41-built-with-alpine
-ARG FFMPEG_VERSION=7.1 \
-    AV1_DAV1D_VERSION=1.5.1 \
-    AV1_SVTAV1_VERSION=v2.3.0 \
-    LIBVPX_VERSION=v1.15.0 \
-    OPUS_VERSION=v1.5.2 \
-    X264_VERSION=31e19f92f00c7003fa115047ce50978bc98c3a0d \
-    X265_VERSION=4.0
+## renovate: datasource=github-tags depName=FFmpeg/FFmpeg packageName=FFmpeg versioning=semver
+ARG FFMPEG_VERSION=n7.1
+## renovate: datasource=gitlab-tags depName=videolan/dav1d packageName=dav1d versioning=semver registryUrl=https://gitlab.com/AOMediaCodec/SVT-AV1.git
+ARG AV1_DAV1D_VERSION=1.5.1
+## renovate: datasource=gitlab-tags depName=AOMediaCodec/SVT-AV1 packageName=SVT-AV1 versioning=semver registryUrl=https://code.videolan.org/videolan/dav1d.git
+ARG AV1_SVTAV1_VERSION=v2.3.0
+## renovate: datasource=github-tags depName=webmproject/libvpx packageName=libvpx versioning=semver
+ARG LIBVPX_VERSION=v1.15.0
+## renovate: datasource=github-releases depName=xiph/opus packageName=opus versioning=semver
+ARG OPUS_VERSION=v1.5.2
+## renovate: datasource=github-releases depName=Netflix/vmaf packageName=vmaf versioning=semver
+ARG VMAF_VERSION=v3.0.0
+## renovate: datasource=git-refs depName=videolan/x264 packageName=x264 branch=stable registryUrl=https://code.videolan.org/videolan/x264.git
+ARG X264_VERSION=31e19f92f00c7003fa115047ce50978bc98c3a0d
+## renovate: datasource=git-refs depName=multicoreware/x265_git packageName=x265 registryUrl=https://bitbucket.org/multicoreware/x265_git.git
+ARG X265_VERSION=4.1
+
 
 # retry dns and some http codes that might be transient errors
 ARG WGET_OPTS="--retry-on-host-error --retry-on-http-error=429,500,502,503"
@@ -134,14 +132,9 @@ ARG AVISYNTHPLUS_VERSION \
     LSMASHWORKS_VERSION \
     OBUPARSE_VERSION
 
-# VMAF
-ARG VMAF_VERSION \
-    VMAF_URL="https://github.com/Netflix/vmaf/archive/refs/tags/v${VMAF_VERSION}.tar.gz" \
-    VMAF_SHA256
-
 # Intel
-ARG INTEL_GMMLIB \
-    INTEL_MEDIA_DRIVER \
+ARG INTEL_GMMLIB_VERSION \
+    INTEL_MEDIA_DRIVER_VERSION \
     INTEL_LIBVA_VERSION \
     INTEL_LIBVPL_VERSION \
     INTEL_VPL_GPU_RT_VERSION
@@ -153,6 +146,7 @@ ARG FFMPEG_VERSION \
     AV1_SVTAV1_VERSION \
     LIBVPX_VERSION \
     OPUS_VERSION \
+    VMAF_VERSION \
     X264_VERSION \
     X265_VERSION
 
@@ -234,10 +228,8 @@ RUN echo "**** AviSynth+ ****" && \
 RUN echo "**** libvmaf ****" && \
     set -eux && \
     cd "${PREFIX}" && \
-    wget ${WGET_OPTS} -O vmaf.tar.gz "${VMAF_URL}" && \
-    echo "${VMAF_SHA256}  vmaf.tar.gz" | sha256sum --status -c - && \
-    tar -xf vmaf.tar.gz && \
-    cd vmaf-*/libvmaf && \
+    git clone --depth 1 -b ${VMAF_VERSION} https://github.com/Netflix/vmaf.git && \
+    cd vmaf/libvmaf && \
     meson build --buildtype=release --libdir="${PREFIX}/lib" \
     -Dbuilt_in_models=true \
     -Denable_avx512=true \
@@ -280,7 +272,7 @@ RUN echo "**** Intel QSV | libva ****" && \
 RUN echo "**** Intel QSV | gmmlib ****" && \
     set -eux && \
     cd "${PREFIX}" && \
-    git clone --depth 1 -b ${INTEL_GMMLIB} https://github.com/intel/gmmlib.git && \
+    git clone --depth 1 -b ${INTEL_GMMLIB_VERSION} https://github.com/intel/gmmlib.git && \
     cd gmmlib && \
     mkdir -p build && \
     cd build && \
@@ -299,7 +291,7 @@ RUN echo "**** Intel QSV | gmmlib ****" && \
 RUN echo "**** Intel QSV | media-driver ****" && \
     set -eux && \
     cd "${PREFIX}" && \
-    git clone --depth 1 -b ${INTEL_MEDIA_DRIVER} https://github.com/intel/media-driver.git && \
+    git clone --depth 1 -b ${INTEL_MEDIA_DRIVER_VERSION} https://github.com/intel/media-driver.git && \
     cd media-driver && \
     mkdir -p build && \
     cd build && \
@@ -486,13 +478,8 @@ RUN echo "**** x265 ****" && \
 RUN echo "**** ffmpeg ****" && \
     set -eux && \
     cd "${PREFIX}" && \
-    wget ${WGET_OPTS} -O ffmpeg.tar.bz2     "${FFMPEG_URL}" && \
-    wget ${WGET_OPTS} -O ffmpeg.tar.bz2.asc "${FFMPEG_URL}.asc" && \
-    curl -sfSL https://ffmpeg.org/ffmpeg-devel.asc | gpg --import && \
-    gpg --verify ffmpeg.tar.bz2.asc ffmpeg.tar.bz2 && \
-    \
-    tar -xf ffmpeg.tar.bz2 && \
-    cd ffmpeg-* && \
+    git clone --depth 1 -b ${FFMPEG_VERSION} https://github.com/FFmpeg/FFmpeg.git ffmpeg && \
+    cd ffmpeg && \
     ./configure \
     # encoder & decoder
     --enable-avisynth \
@@ -711,8 +698,8 @@ RUN echo "**** versions.json write ****" && \
     avisynth: env.AVISYNTHPLUS_VERSION, \
     ffmpeg: env.FFMPEG_VERSION, \
     fontconfig: env.FONTCONFIG_VERSION, \
-    igdgmm: env.INTEL_GMMLIB, \
-    igfxcmrt: env.INTEL_MEDIA_DRIVER, \
+    igdgmm: env.INTEL_GMMLIB_VERSION, \
+    igfxcmrt: env.INTEL_MEDIA_DRIVER_VERSION, \
     libaribb24: env.LIBARIBB24_VERSION, \
     libass: env.LIBASS_VERSION, \
     libdav1d: env.AV1_DAV1D_VERSION, \
