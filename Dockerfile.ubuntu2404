@@ -14,7 +14,7 @@ ARG NODE_VERSION=18
 # AviSynthPlus
 ## renovate: datasource=github-releases packageName=AviSynth/AviSynthPlus versioning=semver
 ARG AVISYNTHPLUS_VERSION=v3.7.3
-## renovate: datasource=git-refs packageName=https://github.com/Mr-Ojii/l-smash.git
+## renovate: datasource=git-refs packageName=https://github.com/Mr-Ojii/l-smash.git branch=master
 ARG LSMASH_VERSION=315b4747d759e336ef30b18e93f2e676810e5a73
 ## renovate: datasource=git-refs  packageName=https://github.com/Mr-Ojii/L-SMASH-Works.git
 ARG LSMASHWORKS_VERSION=fa20c138f7dfe6c28115529c5723ffd1c45c340b
