@@ -17,7 +17,7 @@ ARG AVISYNTHPLUS_VERSION=v3.7.3
 ## renovate: datasource=git-refs packageName=https://github.com/Mr-Ojii/l-smash.git
 ARG LSMASH_VERSION=315b4747d759e336ef30b18e93f2e676810e5a73
 ## renovate: datasource=git-refs  packageName=https://github.com/Mr-Ojii/L-SMASH-Works.git
-ARG LSMASHWORKS_VERSION=fa20c138f7dfe6c28115529c5723ffd1c45c340b
+ARG LSMASHWORKS_VERSION=20210423
 ## renovate: datasource=git-refs packageName=https://github.com/dwbuiten/obuparse.git
 ARG OBUPARSE_VERSION=918524abdc19b6582d853c03373d8e2e0b9f11ee
 
