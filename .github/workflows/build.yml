@@ -49,7 +49,7 @@ jobs:
         type:
           - ubuntu2404
     permissions:
-      contents: read
+      contents: write
       packages: write
     env:
       TZ: 'Asia/Tokyo'
