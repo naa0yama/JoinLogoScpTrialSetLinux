@@ -41,7 +41,7 @@ ARG AV1_DAV1D_VERSION=1.5.1
 ## renovate: datasource=gitlab-tags packageName=AOMediaCodec/SVT-AV1 versioning=semver registryUrl=https://code.videolan.org/videolan/dav1d.git
 ARG AV1_SVTAV1_VERSION=v2.3.0
 ## renovate: datasource=github-tags packageName=webmproject/libvpx versioning=semver
-ARG LIBVPX_VERSION=v1.15.0
+ARG LIBVPX_VERSION=2bfb9f9e0a9cca18cd5a0045e931b49dac390c79
 ## renovate: datasource=github-releases packageName=xiph/opus versioning=semver
 ARG OPUS_VERSION=v1.5.2
 ## renovate: datasource=github-releases packageName=Netflix/vmaf versioning=semver
