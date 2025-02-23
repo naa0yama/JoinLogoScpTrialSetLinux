@@ -137,7 +137,7 @@ jobs:
               NEW_TAG="${TODAY}-beta1"
             fi
           fi
-          echo "::set-output name=new_tag::$NEW_TAG"
+          echo "NEW_TAG=${NEW_TAG}" >> $GITHUB_OUTPUT
 
       - name: Pre-Release
         uses: softprops/action-gh-release@v2
