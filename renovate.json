@@ -10,7 +10,7 @@
         "^Dockerfile.ubuntu(.*)$"
       ],
       "matchStrings": [
-        "## renovate: datasource=(?<datasource>(github-releases|github-tags))\\spackageName=(?<packageName>.+?)(versioning=(?<versioning>[a-z-]+?)|\\s?)+\\s(?:ENV|ARG) .+?_VERSION=(?<currentValue>.+?)\\s",
+        "## renovate: datasource=(?<datasource>(github-releases|github-tags|git-tags))\\spackageName=(?<packageName>.+?)(versioning=(?<versioning>[a-z-]+?)|\\s?)+\\s(?:ENV|ARG) .+?_VERSION=(?<currentValue>.+?)\\s",
         "## renovate: datasource=(?<datasource>(git-refs))\\spackageName=(?<packageName>.+?)\\sbranch=(?<currentValue>.+?)\\sversioning=(?<versioning>[a-z-]+?)?\\s(?:ENV|ARG) .+?_VERSION=(?<currentDigest>[a-f0-9]{7,40})\\s",
         "## renovate: datasource=(?<datasource>(git-refs))\\spackageName=(?<packageName>.+?)\\sversioning=(?<versioning>[a-z-]+?)?\\s(?:ENV|ARG) .+?_VERSION=(?<currentValue>([0-9.]+))\\s"
       ]
