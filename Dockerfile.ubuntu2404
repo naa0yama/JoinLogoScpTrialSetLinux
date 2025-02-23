@@ -28,7 +28,7 @@ ARG INTEL_GMMLIB_VERSION=intel-gmmlib-22.6.0
 ARG INTEL_MEDIA_DRIVER_VERSION=intel-media-24.3.4
 ## renovate: datasource=github-releases packageName=intel/libva versioning=semver
 ARG INTEL_LIBVA_VERSION=2.22.0
-## renovate: datasource=github-tags packageName=intel/libvpl versioning=semver
+## renovate: datasource=github-tags packageName=intel/libvpl versioning=git
 ARG INTEL_LIBVPL_VERSION=v2.14.0
 ## renovate: datasource=github-releases packageName=intel/vpl-gpu-rt
 ARG INTEL_VPL_GPU_RT_VERSION=intel-onevpl-24.3.4
