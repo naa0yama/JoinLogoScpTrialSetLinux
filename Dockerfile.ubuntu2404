@@ -35,7 +35,7 @@ ARG INTEL_VPL_GPU_RT_VERSION=intel-onevpl-24.3.4
 
 # FFmpeg
 ## renovate: datasource=github-tags packageName=FFmpeg/FFmpeg versioning=semver
-ARG FFMPEG_VERSION=n7.1
+ARG FFMPEG_VERSION=d5dbcc00d889fb17948b025a468b00ddbea9e058
 ## renovate: datasource=git-tags packageName=videolan/dav1d versioning=semver registryUrl=https://gitlab.com/AOMediaCodec/SVT-AV1.git
 ARG AV1_DAV1D_VERSION=1.5.1
 ## renovate: datasource=gitlab-tags packageName=AOMediaCodec/SVT-AV1 versioning=semver registryUrl=https://code.videolan.org/videolan/dav1d.git
