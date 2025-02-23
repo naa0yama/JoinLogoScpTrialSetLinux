@@ -23,7 +23,7 @@ ARG OBUPARSE_VERSION=918524abdc19b6582d853c03373d8e2e0b9f11ee
 
 # Intel
 ## renovate: datasource=github-tags packageName=intel/gmmlib versioning=semver
-ARG INTEL_GMMLIB_VERSION=intel-gmmlib-22.6.0
+ARG INTEL_GMMLIB_VERSION=8325c5683b4c68301cd5515a37bd72529cee596d
 ## renovate: datasource=github-releases packageName=intel/media-driver
 ARG INTEL_MEDIA_DRIVER_VERSION=intel-media-24.3.4
 ## renovate: datasource=github-releases packageName=intel/libva versioning=semver
