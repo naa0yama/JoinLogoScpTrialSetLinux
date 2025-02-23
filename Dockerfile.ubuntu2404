@@ -34,21 +34,21 @@ ARG INTEL_LIBVPL_VERSION=v2.14.0
 ARG INTEL_VPL_GPU_RT_VERSION=intel-onevpl-24.3.4
 
 # FFmpeg
-## renovate: datasource=github-tags depName=FFmpeg/FFmpeg packageName=FFmpeg versioning=semver
+## renovate: datasource=github-tags packageName=FFmpeg/FFmpeg versioning=semver
 ARG FFMPEG_VERSION=n7.1
-## renovate: datasource=gitlab-tags depName=videolan/dav1d packageName=dav1d versioning=semver registryUrl=https://gitlab.com/AOMediaCodec/SVT-AV1.git
+## renovate: datasource=gitlab-tags packageName=videolan/dav1d versioning=semver registryUrl=https://gitlab.com/AOMediaCodec/SVT-AV1.git
 ARG AV1_DAV1D_VERSION=1.5.1
-## renovate: datasource=gitlab-tags depName=AOMediaCodec/SVT-AV1 packageName=SVT-AV1 versioning=semver registryUrl=https://code.videolan.org/videolan/dav1d.git
+## renovate: datasource=gitlab-tags packageName=AOMediaCodec/SVT-AV1 versioning=semver registryUrl=https://code.videolan.org/videolan/dav1d.git
 ARG AV1_SVTAV1_VERSION=v2.3.0
-## renovate: datasource=github-tags depName=webmproject/libvpx packageName=libvpx versioning=semver
+## renovate: datasource=github-tags packageName=webmproject/libvpx versioning=semver
 ARG LIBVPX_VERSION=v1.15.0
-## renovate: datasource=github-releases depName=xiph/opus packageName=opus versioning=semver
+## renovate: datasource=github-releases packageName=xiph/opus versioning=semver
 ARG OPUS_VERSION=v1.5.2
-## renovate: datasource=github-releases depName=Netflix/vmaf packageName=vmaf versioning=semver
+## renovate: datasource=github-releases packageName=Netflix/vmaf versioning=semver
 ARG VMAF_VERSION=v3.0.0
-## renovate: datasource=git-refs depName=videolan/x264 packageName=x264 branch=stable registryUrl=https://code.videolan.org/videolan/x264.git
+## renovate: datasource=git-refs packageName=videolan/x264 branch=stable registryUrl=https://code.videolan.org/videolan/x264.git
 ARG X264_VERSION=31e19f92f00c7003fa115047ce50978bc98c3a0d
-## renovate: datasource=git-refs depName=multicoreware/x265_git packageName=x265 registryUrl=https://bitbucket.org/multicoreware/x265_git.git
+## renovate: datasource=git-refs packageName=multicoreware/x265_git registryUrl=https://bitbucket.org/multicoreware/x265_git.git
 ARG X265_VERSION=4.0
 
 
