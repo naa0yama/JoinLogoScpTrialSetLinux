@@ -11,7 +11,7 @@
       ],
       "matchStrings": [
         "## renovate: datasource=(?<datasource>[a-z-]+?)(packageName=(?<packageName>.+?)|versioning=(?<versioning>[a-z-]+?)|\\s?)+\\s(?:ENV|ARG) .+?_VERSION=(?<currentValue>.+?)\\s",
-        "# renovate: datasource=(?<datasource>[a-z-]+?) packageName=(?<packageName>.+?) branch=(?<currentValue>.+?)\\s(?:ENV|ARG).+?_VERSION=(?<currentDigest>[a-f0-9]{7,40})\\s"
+        "## renovate: datasource=(?<datasource>[a-z-]+?) packageName=(?<packageName>.+?) branch=(?<currentValue>.+?)?\\s(?:ENV|ARG) .+?_VERSION=(?<currentDigest>[a-f0-9]{7,40})\\s"
       ]
     }
   ]
