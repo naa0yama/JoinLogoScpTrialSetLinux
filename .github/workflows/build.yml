@@ -121,13 +121,15 @@ jobs:
       - name: Generate new pre-release tag
         id: new_tag
         run: |
+          set -eux
+
           TODAY=$(date +'%y.%m.%d')
           PRE_TAG=$(git tag --sort=creatordate | grep -E "^v[0-9]{2}\.[0-9]{2}\.[0-9]{2}-beta[0-9]+$" | tail -n 1)
           if [ "${PRE_TAG}" = "" ]; then
             NEW_TAG="v${TODAY}-beta1"
           else
             PRE_TAG_DATE=$(echo "${PRE_TAG}" | cut -d '-' -f 1)
-            if [ "$PRE_TAG_DATE" = "$TODAY" ]; then
+            if [ "$PRE_TAG_DATE" = "v$TODAY" ]; then
               PRE_TAG_VERSION=$(echo "${PRE_TAG}" | cut -d '-' -f 2- | sed 's/beta//g')
               NEW_TAG="v${TODAY}-beta$((PRE_TAG_VERSION + 1))"
             else
