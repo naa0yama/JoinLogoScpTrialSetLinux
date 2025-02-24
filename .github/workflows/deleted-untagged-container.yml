@@ -1,13 +1,18 @@
 ---
 name: Cleanup container
-on: # yamllint disable-line rule:truthy
-  push:
-    tags:
-    - 'v*'
+on:
+  # Even if you tag a release when you create it, push.tag doesn't work.
+  # You should use release types: [published].
+  # push:
+  #   tags:
+  #     - 'v*'
+  release:
+    types:
+      - published
   pull_request:
     types:
       - closed
-  workflow_dispatch: # yamllint disable-line rule:empty-values
+  workflow_dispatch:
 
 jobs:
   cleanup:
