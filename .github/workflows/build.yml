@@ -158,6 +158,6 @@ jobs:
           name: ${{ steps.new_tag.outputs.new_tag }}
           tag_name: ${{ steps.new_tag.outputs.new_tag }}
           generate_release_notes: true
-          draft: false
-          prerelease: true
+          draft: true
+          prerelease: false
           make_latest: ${{ env.MAKE_LATEST }}
