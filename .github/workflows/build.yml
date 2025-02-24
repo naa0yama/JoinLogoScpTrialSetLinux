@@ -2,9 +2,11 @@
 name: Builds
 
 on:
-  push:
-    tags:
-      - 'v*'
+  # Even if you tag a release when you create it, push.tag doesn't work.
+  # You should use release types: [published].
+  # push:
+  #   tags:
+  #     - 'v*'
   pull_request:
     branches:
       - main
@@ -16,8 +18,7 @@ on:
       - auto_merge_enabled
   release:
     types:
-      - created
-      - edited
+      - published
   workflow_dispatch:
     inputs:
       rebuild:
