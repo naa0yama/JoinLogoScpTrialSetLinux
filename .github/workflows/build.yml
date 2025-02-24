@@ -55,6 +55,10 @@ jobs:
     steps:
       - name: Checkout from repository
         uses: actions/checkout@v4.2.2
+        with:
+          # Whether to fetch tags, even if fetch-depth > 0.
+          # Default: false
+          fetch-tags: true
 
       - uses: docker/metadata-action@v5
         id: meta
@@ -121,9 +125,8 @@ jobs:
       - name: Generate new pre-release tag
         id: new_tag
         run: |
-          set -eux
+          set -eu
 
-          git tag
           TODAY=$(date +'%y.%m.%d')
           echo "Today's date: ${TODAY}"
 
