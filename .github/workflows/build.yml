@@ -56,9 +56,9 @@ jobs:
       - name: Checkout from repository
         uses: actions/checkout@v4.2.2
         with:
-          # Whether to fetch tags, even if fetch-depth > 0.
-          # Default: false
-          fetch-tags: true
+          # Number of commits to fetch. 0 indicates all history for all branches and tags.
+          # Default: 1
+          fetch-depth: 0
 
       - uses: docker/metadata-action@v5
         id: meta
