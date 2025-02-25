@@ -49,7 +49,7 @@ ARG OPUS_VERSION=v1.5.2
 ARG VMAF_VERSION=v3.0.0
 ## renovate: datasource=git-refs packageName=https://code.videolan.org/videolan/x264.git branch=stable versioning=git
 ARG X264_VERSION=31e19f92f00c7003fa115047ce50978bc98c3a0d
-## renovate: datasource=git-refs packageName=https://bitbucket.org/multicoreware/x265_git.git versioning=git
+## renovate: datasource=git-refs packageName=https://bitbucket.org/multicoreware/x265_git.git versioning=semver
 ARG X265_VERSION=3.5
 
 
