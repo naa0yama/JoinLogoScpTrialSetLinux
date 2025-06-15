@@ -176,12 +176,6 @@ RUN echo "**** Build Dependencies ****" && \
     xxd \
     yasm \
     zlib1g-dev \
-    # SDL2 and ffplay dependencies
-    libsdl2-dev \
-    libx11-dev \
-    libxext-dev \
-    libxfixes-dev \
-    libxi-dev \
     && \
     \
     # Cleanup \
@@ -392,47 +386,6 @@ RUN echo "**** SVT-AV1 ****" && \
     \
     pkg-config --exists SvtAv1Enc
 
-## SDL2
-RUN echo "**** SDL2 ****" && \
-    set -eux && \
-    # SDL2_VERSION はFFmpegビルド時のARGで定義されていないため、ここで固定値を設定
-    # 必要に応じてARGに追加することも検討
-    SDL2_VERSION="release-2.30.0" && \
-    cd "${PREFIX}" && \
-    git clone --depth 1 -b ${SDL2_VERSION} https://github.com/libsdl-org/SDL.git SDL2 && \
-    cd SDL2 && \
-    mkdir build && \
-    cd build && \
-    ../configure \
-        --enable-static \
-        --disable-shared \
-        --with-pic \
-        --prefix="${PREFIX}" \
-        --disable-video-oss \
-        --disable-video-wayland \
-        --disable-video-kmsdrm \
-        --disable-video-vivante \
-        --disable-video-vulkan \
-        --disable-video-rpi \
-        --disable-video-dummy \
-        --disable-video-offscreen \
-        --disable-esd \
-        --disable-pulseaudio \
-        --disable-arts \
-        --disable-nas \
-        --disable-sndio \
-        --disable-pipewire \
-        --disable-jack \
-        --disable-libsamplerate \
-    && \
-    make -j$(nproc) && \
-    make install && \
-    make clean && \
-    cd "${PREFIX}" && \
-    mv -v SDL2 "${PREFIX}/src" && \
-    \
-    pkg-config --exists sdl2
-
 ## libvpx
 RUN echo "**** libvpx ****" && \
     set -eux && \
@@ -558,7 +511,7 @@ RUN echo "**** ffmpeg ****" && \
     # small binary & static build
     --disable-debug \
     --disable-doc \
-    # --disable-ffplay # ffplay を有効にするためにコメントアウトまたは削除
+    --disable-ffplay \
     --disable-shared \
     --enable-small \
     --enable-static \
