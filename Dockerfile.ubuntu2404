@@ -176,6 +176,12 @@ RUN echo "**** Build Dependencies ****" && \
     xxd \
     yasm \
     zlib1g-dev \
+    # SDL2 and ffplay dependencies
+    libsdl2-dev \
+    libx11-dev \
+    libxext-dev \
+    libxfixes-dev \
+    libxi-dev \
     && \
     \
     # Cleanup \
@@ -376,7 +382,8 @@ RUN echo "**** SVT-AV1 ****" && \
     -DCMAKE_INSTALL_PREFIX="${PREFIX}" \
     -DCMAKE_BUILD_TYPE=Release \
     -DBUILD_DEC=OFF \
-    -DBUILD_SHARED_LIBS=OFF .. && \
+    -DBUILD_SHARED_LIBS=OFF \
+    -DCMAKE_POSITION_INDEPENDENT_CODE=ON .. && \
     make -j$(nproc) && \
     make install && \
     make clean && \
@@ -384,6 +391,47 @@ RUN echo "**** SVT-AV1 ****" && \
     mv -v SVT-AV1 "${PREFIX}/src" && \
     \
     pkg-config --exists SvtAv1Enc
+
+## SDL2
+RUN echo "**** SDL2 ****" && \
+    set -eux && \
+    # SDL2_VERSION はFFmpegビルド時のARGで定義されていないため、ここで固定値を設定
+    # 必要に応じてARGに追加することも検討
+    SDL2_VERSION="release-2.30.0" && \
+    cd "${PREFIX}" && \
+    git clone --depth 1 -b ${SDL2_VERSION} https://github.com/libsdl-org/SDL.git SDL2 && \
+    cd SDL2 && \
+    mkdir build && \
+    cd build && \
+    ../configure \
+        --enable-static \
+        --disable-shared \
+        --with-pic \
+        --prefix="${PREFIX}" \
+        --disable-video-oss \
+        --disable-video-wayland \
+        --disable-video-kmsdrm \
+        --disable-video-vivante \
+        --disable-video-vulkan \
+        --disable-video-rpi \
+        --disable-video-dummy \
+        --disable-video-offscreen \
+        --disable-esd \
+        --disable-pulseaudio \
+        --disable-arts \
+        --disable-nas \
+        --disable-sndio \
+        --disable-pipewire \
+        --disable-jack \
+        --disable-libsamplerate \
+    && \
+    make -j$(nproc) && \
+    make install && \
+    make clean && \
+    cd "${PREFIX}" && \
+    mv -v SDL2 "${PREFIX}/src" && \
+    \
+    pkg-config --exists sdl2
 
 ## libvpx
 RUN echo "**** libvpx ****" && \
@@ -396,10 +444,10 @@ RUN echo "**** libvpx ****" && \
         --disable-docs \
         --disable-examples \
         --disable-install-bins \
-        --disable-static \
+        --enable-static \
         --disable-unit-tests \
         --enable-pic \
-        --enable-shared \
+        --disable-shared \
         --enable-vp8 \
         --enable-vp9 \
         --enable-vp9-highbitdepth \
@@ -420,8 +468,9 @@ RUN echo "**** opus ****" && \
     cd opus && \
     autoreconf -fiv && \
     ./configure \
-        --disable-static \
-        --enable-shared \
+        --enable-static \
+        --disable-shared \
+        --with-pic \
     && \
     make -j$(nproc) && \
     make install && \
@@ -443,9 +492,9 @@ RUN echo "**** x264 ****" && \
     git checkout FETCH_HEAD && \
     ./configure \
         --disable-cli \
-        --disable-static \
+        --enable-static \
         --enable-pic \
-        --enable-shared \
+        --disable-shared \
     && \
     make -j$(nproc) && \
     make install && \
@@ -461,7 +510,10 @@ RUN echo "**** x265 ****" && \
     cd "${PREFIX}" && \
     git clone --depth 1 -b ${X265_VERSION} https://bitbucket.org/multicoreware/x265_git.git x265 && \
     cd x265/build/linux && \
+    export CMAKE_ARGS="-DENABLE_SHARED:BOOL=OFF -DSTATIC_LIB:BOOL=ON -DCMAKE_POSITION_INDEPENDENT_CODE:BOOL=ON" && \
     MAKEFLAGS="-j$(nproc)" ./multilib.sh && \
+    # The following make install might be redundant if multilib.sh already handles it with new CMAKE_ARGS
+    # However, keeping it for now to ensure the original build flow for 8bit is attempted.
     make -C 8bit -j$(nproc) install && \
     cd "${PREFIX}" && \
     mv -v x265 "${PREFIX}/src" && \
@@ -506,7 +558,7 @@ RUN echo "**** ffmpeg ****" && \
     # small binary & static build
     --disable-debug \
     --disable-doc \
-    --disable-ffplay \
+    # --disable-ffplay # ffplay を有効にするためにコメントアウトまたは削除
     --disable-shared \
     --enable-small \
     --enable-static \
