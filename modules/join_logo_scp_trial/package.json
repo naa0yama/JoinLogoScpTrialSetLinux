@@ -2,10 +2,11 @@
   "name": "join_logo_scp_trial",
   "version": "1.0.0",
   "description": "",
+  "type": "module",
   "main": "src/jlse.js",
   "scripts": {
     "start": "node src/jlse.js",
-    "lint": "eslint --fix ."
+    "lint": "./node_modules/.bin/eslint --fix ."
   },
   "bin": {
     "jlse": "src/jlse.js"
@@ -20,6 +21,9 @@
     "url": "https://github.com/tobitti0/join_logo_scp_trial/issues"
   },
   "homepage": "https://github.com/tobitti0/join_logo_scp_trial",
+  "engines": {
+    "node": "24"
+  },
   "dependencies": {
     "async": "3.2.6",
     "csv": "6.3.11",
@@ -28,7 +32,8 @@
     "yargs": "17.7.2"
   },
   "devDependencies": {
-    "eslint": "9.29.0",
+    "@eslint/js": "^9.29.0",
+    "eslint": "^9.29.0",
     "eslint-config-google": "0.14.0",
     "eslint-config-prettier": "9.1.0",
     "eslint-plugin-prettier": "5.4.1",
