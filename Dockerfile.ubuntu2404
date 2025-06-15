@@ -376,7 +376,8 @@ RUN echo "**** SVT-AV1 ****" && \
     -DCMAKE_INSTALL_PREFIX="${PREFIX}" \
     -DCMAKE_BUILD_TYPE=Release \
     -DBUILD_DEC=OFF \
-    -DBUILD_SHARED_LIBS=OFF .. && \
+    -DBUILD_SHARED_LIBS=OFF \
+    -DCMAKE_POSITION_INDEPENDENT_CODE=ON .. && \
     make -j$(nproc) && \
     make install && \
     make clean && \
@@ -396,10 +397,10 @@ RUN echo "**** libvpx ****" && \
         --disable-docs \
         --disable-examples \
         --disable-install-bins \
-        --disable-static \
+        --enable-static \
         --disable-unit-tests \
         --enable-pic \
-        --enable-shared \
+        --disable-shared \
         --enable-vp8 \
         --enable-vp9 \
         --enable-vp9-highbitdepth \
@@ -420,8 +421,9 @@ RUN echo "**** opus ****" && \
     cd opus && \
     autoreconf -fiv && \
     ./configure \
-        --disable-static \
-        --enable-shared \
+        --enable-static \
+        --disable-shared \
+        --with-pic \
     && \
     make -j$(nproc) && \
     make install && \
@@ -443,9 +445,9 @@ RUN echo "**** x264 ****" && \
     git checkout FETCH_HEAD && \
     ./configure \
         --disable-cli \
-        --disable-static \
+        --enable-static \
         --enable-pic \
-        --enable-shared \
+        --disable-shared \
     && \
     make -j$(nproc) && \
     make install && \
@@ -461,7 +463,10 @@ RUN echo "**** x265 ****" && \
     cd "${PREFIX}" && \
     git clone --depth 1 -b ${X265_VERSION} https://bitbucket.org/multicoreware/x265_git.git x265 && \
     cd x265/build/linux && \
+    export CMAKE_ARGS="-DENABLE_SHARED:BOOL=OFF -DSTATIC_LIB:BOOL=ON -DCMAKE_POSITION_INDEPENDENT_CODE:BOOL=ON" && \
     MAKEFLAGS="-j$(nproc)" ./multilib.sh && \
+    # The following make install might be redundant if multilib.sh already handles it with new CMAKE_ARGS
+    # However, keeping it for now to ensure the original build flow for 8bit is attempted.
     make -C 8bit -j$(nproc) install && \
     cd "${PREFIX}" && \
     mv -v x265 "${PREFIX}/src" && \
