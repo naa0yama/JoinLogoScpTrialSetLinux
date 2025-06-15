@@ -28,10 +28,10 @@
     "yargs": "17.7.2"
   },
   "devDependencies": {
-    "eslint": "9.21.0",
+    "eslint": "9.29.0",
     "eslint-config-google": "0.14.0",
     "eslint-config-prettier": "9.1.0",
-    "eslint-plugin-prettier": "5.2.3",
-    "prettier": "3.5.2"
+    "eslint-plugin-prettier": "5.4.1",
+    "prettier": "3.5.3"
   }
 }
