@@ -1,0 +1,135 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+check_static_binary() {
+    local file_path="${1}"
+    local check_mode="${2:-strict}"  # strict/permissive
+
+    if [[ ! -f "${file_path}" ]]; then
+        echo "check_static: Error: File not found: ${file_path}" >&2
+        exit 1
+    fi
+
+    local file_info=$(file "${file_path}")
+    local filename=$(basename "${file_path}")
+    echo "check_static: Checking: ${filename} (mode: ${check_mode})"
+
+    # .a File (static library)
+    if [[ "${file_path##*.}" == "a" ]] || echo "${file_info}" | grep -q "ar archive"; then
+        echo "check_static: ✓ Static library: ${filename}"
+        return 0
+    fi
+
+    # .so Files (shared libraries) - improved logic for Ubuntu 24.04
+    if [[ "${file_path##*.}" == "so" ]] || echo "${file_path}" | grep -q "\.so\." || echo "${file_info}" | grep -q "shared object"; then
+        if [ "${check_mode}" = "permissive" ]; then
+            echo "check_static: ✓ Shared library (permissive mode): ${filename}"
+            return 0
+        else
+            # In strict mode, allow system libraries but reject user libraries
+            # Ubuntu 24.04 system library paths that should be considered acceptable
+            local system_lib_paths=(
+                "/lib/x86_64-linux-gnu/"
+                "/usr/lib/x86_64-linux-gnu/"
+                "/lib64/"
+                "/usr/lib64/"
+            )
+
+            local is_system_lib=false
+            for sys_path in "${system_lib_paths[@]}"; do
+                if [[ "${file_path}" == ${sys_path}* ]]; then
+                    is_system_lib=true
+                    break
+                fi
+            done
+
+            if [ "$is_system_lib" = true ]; then
+                echo "check_static: ✓ System library (allowed in strict mode): ${filename}"
+                return 0
+            fi
+
+            # Special case: AviSynth plugins that only depend on system libraries
+            if [[ "${file_path}" == */avisynth/* ]] && [[ "${file_path}" == *.so ]]; then
+                # Check if this AviSynth plugin only depends on system libraries
+                local ldd_output_plugin=$(ldd "${file_path}" 2>&1)
+                local has_non_system_deps_plugin=false
+                while IFS= read -r line; do
+                    local lib_path=""
+                    if [[ "$line" =~ =\>\ (.+)\ \( ]]; then
+                        lib_path="${BASH_REMATCH[1]}"
+                    elif [[ "$line" =~ ^[[:space:]]*(/[^[:space:]]+)\ \( ]]; then
+                        lib_path="${BASH_REMATCH[1]}"
+                    fi
+
+                    if [[ -n "$lib_path" ]] && [[ "$lib_path" != *"linux-vdso.so"* ]]; then
+                        if [[ ! "$lib_path" =~ ^(/lib/|/usr/lib/|/lib64/|/usr/lib64/) ]]; then
+                            has_non_system_deps_plugin=true
+                            break
+                        fi
+                    fi
+                done <<< "$ldd_output_plugin"
+
+                if [ "$has_non_system_deps_plugin" = false ]; then
+                    echo "check_static: ✓ AviSynth plugin with system dependencies only: ${filename}"
+                    return 0
+                fi
+            fi
+
+            echo "check_static: ✗ Error: Non-system dynamic library detected: ${filename}" >&2
+            ldd "${file_path}" 2>&1 | sed 's/^/  /' >&2 || true
+            exit 1
+        fi
+    fi
+
+    # Executable files - improved for Ubuntu 24.04
+    if echo "${file_info}" | grep -q "executable"; then
+        local ldd_output=$(ldd "${file_path}" 2>&1)
+        if echo "${ldd_output}" | grep -q "not a dynamic executable" || echo "${file_info}" | grep -q "statically linked"; then
+            echo "check_static: ✓ Static executable: ${filename}"
+        else
+            # Check if this is a dynamically linked executable but only uses system libraries
+            if [ "${check_mode}" = "permissive" ]; then
+                echo "check_static: ✓ Dynamic executable (permissive mode): ${filename}"
+                return 0
+            fi
+
+            # In strict mode, check if it only links to system libraries
+            local has_non_system_deps=false
+            while IFS= read -r line; do
+                # Handle both "=> /path/to/lib (address)" and "/path/to/lib (address)" formats
+                local lib_path=""
+                if [[ "$line" =~ =\>\ (.+)\ \( ]]; then
+                    lib_path="${BASH_REMATCH[1]}"
+                elif [[ "$line" =~ ^[[:space:]]*(/[^[:space:]]+)\ \( ]]; then
+                    lib_path="${BASH_REMATCH[1]}"
+                fi
+
+                # Skip linux-vdso.so.1 as it's a virtual library
+                if [[ -n "$lib_path" ]] && [[ "$lib_path" != *"linux-vdso.so"* ]]; then
+                    if [[ ! "$lib_path" =~ ^(/lib/|/usr/lib/|/lib64/|/usr/lib64/) ]]; then
+                        has_non_system_deps=true
+                        break
+                    fi
+                fi
+            done <<< "$ldd_output"
+
+            if [ "$has_non_system_deps" = false ]; then
+                echo "check_static: ✓ Executable with system dependencies only: ${filename}"
+            else
+                echo "check_static: ✗ Error: Dynamic executable with non-system dependencies: ${filename}" >&2
+                echo "check_static: Dependencies:" >&2
+                echo "${ldd_output}" | sed 's/^/  /' >&2
+                exit 1
+            fi
+        fi
+        return 0
+    fi
+
+    echo "check_static: ✓ Other file type: ${filename}"
+    return 0
+}
+
+# Execute with arguments
+if [[ ${#} -gt 0 ]]; then
+    check_static_binary "${@}"
+fi

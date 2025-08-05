@@ -1,0 +1,39 @@
+#!/usr/bin/env bash
+set -euxo pipefail
+
+RUN_TYPE="${1:-}"
+
+if [ "${RUN_TYPE}" == "find" ]; then
+	echo -e "\033[0;33mFind test. ${INPUT}\033[0m"
+	find /source -type f -name '*.ts' -exec env INPUT="{}" \
+	jlse --input "{}" --encode \
+		--option ' -vf yadif -map 0:v -aspect 16:9 -c:v libx264 -preset veryfast -movflags faststart -f mp4 -map 0:a -c:a aac -bsf:a aac_adtstoasc' \;
+
+else
+	INPUT="/source/jtv_scene_06min.ts"
+	echo -e "\033[0;33mDefault test. ${INPUT}\033[0m"
+	if [[ ! -f "${INPUT}" ]]; then
+		echo "Default testfile not found."
+		echo "Generate ts file."
+		JTV_TEMP=$(mktemp -q -d)
+		cd "${JTV_TEMP}"
+		curl -o jtv_gen.sh -sfSL https://raw.githubusercontent.com/naa0yama/jtv-gen/refs/heads/main/jtv_gen.sh
+		chmod +x jtv_gen.sh
+		./jtv_gen.sh -y
+
+		echo "Copy ${INPUT}"
+		cp -av output/scene_06min/jtv_scene_06min.ts /source
+	fi
+
+	jlse --input "${INPUT}" --encode \
+		--option ' -map 0:v -aspect 16:9 -c:v libx264 -preset veryfast -movflags faststart -f mp4 -map 0:a -c:a aac -bsf:a aac_adtstoasc' \;
+	duration=$(ffprobe -v error -show_entries format=duration -of csv=p=0 "${INPUT%.ts}.mp4")
+	if (( ${duration%.*} >= 208 && ${duration%.*} <= 212 )); then
+		echo -e "\033[0;32mOK: duration=${duration%.*} Complete jlse is running normally.\033[0m"
+	else
+		echo -e "\033[0;31mNG: duration=${duration%.*}\033[0m"
+		echo "The jlse cut range is higher or lower than expected (normal value is between 208-212 seconds)."
+		exit 1
+	fi
+	echo -e "\033[0;32mComplete test_jlse.\033[0m"
+fi
