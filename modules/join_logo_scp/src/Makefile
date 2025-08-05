@@ -8,11 +8,15 @@ SRCS      += JlsScrFuncReg.cpp JlsScrFuncList.cpp JlsScriptDecode.cpp
 SRCS      += JlsScriptLimit.cpp JlsScriptLimVar.cpp JlsScriptState.cpp
 SRCS      += CnvStrTime.cpp LocalEtc.cpp
 OBJS      = $(SRCS:.cpp=.o)
+PREFIX    = /usr/local
+BINDIR    = $(PREFIX)/bin
 CXX       = g++
 #CXX       = clang++
 CXXFLAGS  = -Wall -std=gnu++17
 LIBS      = -static-libgcc -static-libstdc++ -static
 
+.PHONY: all clean
+all: clean $(OBJS) $(TARGET)
 
 $(TARGET): $(OBJS)
 	$(CXX) $(CXXFLAGS) -o $@ $^ $(LIBS)
@@ -20,10 +24,12 @@ $(TARGET): $(OBJS)
 $(OBJS): $(SRCS)
 	$(CXX) $(CXXFLAGS) -c $^
 
+install:
+	install -d $(BINDIR)
+	install -m 0755 $(TARGET) $(BINDIR)
 
-.PHONY: all
-all: clean $(OBJS) $(TARGET)
+uninstall:
+	$(RM) $(BINDIR)/$(TARGET)
 
-.PHONY: clean
 clean:
 	$(RM) $(OBJS) $(TARGET)

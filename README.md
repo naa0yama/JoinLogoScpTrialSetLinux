@@ -16,16 +16,10 @@ DockerとDocker-composeを用いて動作させます。
 - [x] `-c` フラグを立てると EPGStation の放送局名(`CHNNELNAME`)を取得する事でロゴ検索を高速化
   - [x] `-1` などの末尾数字は最も大きい物を利用するため世代管理でも問題ありません。
   - [x] これにより Amatsukaze で生成されたロゴデータをそのまま利用出来ます。
-- [x] L-SMASH-Works を [Mr-Ojii/l-smash](https://github.com/Mr-Ojii/l-smash) と [Mr-Ojii/L-SMASH-Works](https://github.com/Mr-Ojii/L-SMASH-Works) に更新し FFmpeg 7.x 系に対応
+- [x] L-SMASH-Works の対応がどうも FFmpeg 6.1.1 までの様子のため modules 郡用の FFmpeg は 6.1.1 を、エンコード用はFFmpeg 7.x となるようにしています。そのため FFmpeg 6.1.1 の `ffmpeg` コマンド自体は生成していません。
 - [x] 弊宅で動作が確認出来た, Dockerfile を追加しました
   - [x] Ubuntu 24.04
 - [x] `--addchapter` CMカット後のチャプターを追加するオプション追加
-- [x] Intel Arc A310 を利用するためにを [Hardware/QuickSync – FFmpeg](https://trac.ffmpeg.org/wiki/Hardware/QuickSync) 参考に下記を追加
-  - [x] [intel/libvpl](https://github.com/intel/libvpl)
-  - [x] [intel/vpl-gpu-rt](https://github.com/intel/vpl-gpu-rt)
-
-> [!IMPORTANT]
-> 2025/01 に環境再構築をし、弊宅では Ubuntu 22.04 / nvidia/cuda の運用を終了したためメンテナンスを停止
 
 ## 動作確認用環境セットアップ方法
 
@@ -37,28 +31,16 @@ DockerとDocker-composeを用いて動作させます。
 git clone https://github.com/naa0yama/JoinLogoScpTrialSetLinux.git
 cd JoinLogoScpTrialSetLinux
 
-docker pull ghcr.io/naa0yama/joinlogoscptrialsetlinux:latest
+docker pull ghcr.io/naa0yama/joinlogoscptrialsetlinux:ubuntu2404
 
 docker run --user $(id -u):$(id -g) --rm -it \
   -v $PWD/videos/source:/source \
-  -v $PWD/videos/dist:/dist \
   -v $PWD/modules/join_logo_scp_trial/JL:/join_logo_scp_trial/JL \
   -v $PWD/modules/join_logo_scp_trial/logo:/join_logo_scp_trial/logo \
   -v $PWD/modules/join_logo_scp_trial/result:/join_logo_scp_trial/result \
   -v $PWD/modules/join_logo_scp_trial/setting:/join_logo_scp_trial/setting \
   -v $PWD/modules/join_logo_scp_trial/src:/join_logo_scp_trial/src \
-  ghcr.io/naa0yama/joinlogoscptrialsetlinux:latest /bin/bash
-
-
-docker run --user $(id -u):$(id -g) --rm -it \
-  -v $PWD/videos/source:/source \
-  -v $PWD/videos/dist:/dist \
-  -v $PWD/modules/join_logo_scp_trial/JL:/join_logo_scp_trial/JL \
-  -v $PWD/modules/join_logo_scp_trial/logo:/join_logo_scp_trial/logo \
-  -v $PWD/modules/join_logo_scp_trial/result:/join_logo_scp_trial/result \
-  -v $PWD/modules/join_logo_scp_trial/setting:/join_logo_scp_trial/setting \
-  -v $PWD/modules/join_logo_scp_trial/src:/join_logo_scp_trial/src \
-  tmp-my bash
+  ghcr.io/naa0yama/joinlogoscptrialsetlinux:ubuntu2404 /bin/bash
 
 ```
 
@@ -74,7 +56,7 @@ logoフォルダが生成されていると思うので、そこにロゴデー�
 ```bash
 find /source -type f -name '*.ts' -exec env INPUT="{}" \
   jlse --input "{}" \
-  --encode --option ' -ignore_unknown -vf yadif -map 0:v -aspect 16:9 -c:v libx264 -preset veryfast -movflags faststart -f mp4 -map 0:a -c:a aac -bsf:a aac_adtstoasc' \;
+  --encode --option ' -vf yadif -map 0:v -aspect 16:9 -c:v libx264 -preset veryfast -movflags faststart -f mp4 -map 0:a -c:a aac -bsf:a aac_adtstoasc' \;
 
 ```
 
@@ -83,7 +65,7 @@ join_logo_scp_trialの詳しい使用方法は、[こちら][5]を確認して�
 
 [5]:https://github.com/tobitti0/join_logo_scp_trial/blob/master/README.md
 
-## EPGStationで使用する
+### EPGStationで使用する
 
 LinuxなEPGStationでDocker環境の場合の導入方法は[こちら][6]
 
@@ -101,15 +83,47 @@ const child = spawn('jlse', jlse_args, {env: env});
 
 ```
 
-（Dockerで動作させていない場合はHOMEの値は異なると思います。Dockerだといじっていなければrootです。）
+（Dockerで動作させていない場合は `HOME` の値は異なると思います。Dockerだといじっていなければ `root` です。）
 
-## ファイル構成
+### ファイル構成
 
 ```text
 * logoframe           : 透過ロゴ表示区間検出 ver1.16（要AviSynth環境）
 * chapter_exe         : 無音＆シーンチェンジ検索chapter_exeの改造版（要AviSynth環境）
 * join_logo_scp       : ロゴと無音シーンチェンジを使ったCM自動カット位置情報作成
 * join_logo_scp_trial : join_logo_scp動作確認用スクリプト
+
+```
+
+## 開発
+
+### Dockerfile での開発
+
+基本的には `dev-build.sh` にまとめてあり、 `bash dev-build.sh --tag ubuntu2404` を実行することで生成と jlse の実行が行われます
+
+```bash
+# 通常
+bash dev-build.sh --tag ubuntu2404
+
+# build-stage を指定する場合
+bash dev-build.sh --tag ubuntu2404 --target build-jlstsl
+
+# SHELL に入りたい場合
+bash dev-build.sh --tag ubuntu2404 --shell
+
+# ROOT で SHELL に入りたい場合
+bash dev-build.sh --tag ubuntu2404 --shell --root
+
+```
+
+### Claude Code の導入
+
+```bash
+npm config set prefix=$HOME/.npm_global
+npm install -g @anthropic-ai/claude-code
+
+echo "export PATH=\$PATH:\$HOME/.npm_global/bin/" >> ~/.bashrc
+exec $SHELL -l
 
 ```
 

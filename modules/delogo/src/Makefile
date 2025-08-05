@@ -1,14 +1,15 @@
 PROGRAM = libdelogo.so
 OBJS = delogo.o
 
-INSTALL_DIR = /usr/local/lib/avisynth/
+PREFIX = /usr/local/lib/avisynth
 RM = rm
-MV = mv
 CC = gcc
-CFLAGS = -O3 -I/usr/local/include/avisynth -fPIC -ffast-math -Wall -Wshadow -Wempty-body -I. -std=gnu99 -fpermissive -fomit-frame-pointer -s -fno-tree-vectorize 
-LDLAGS = -shared -fPIC 
+AVISYNTH_CFLAGS = $(shell pkg-config --cflags avisynth 2>/dev/null || echo "-I/usr/local/include/avisynth")
+CFLAGS = -O3 $(AVISYNTH_CFLAGS) -fPIC -ffast-math -Wall -Wshadow -Wempty-body -I. -std=gnu99 -fpermissive -fomit-frame-pointer -s -fno-tree-vectorize
+LDLAGS = -shared -fPIC
 
 .SUFFIXES: .c .o
+.PHONY: install uninstall clean
 
 $(PROGRAM): $(OBJS)
 	$(CC) -o $(PROGRAM) $^ $(LDLAGS)
@@ -16,12 +17,12 @@ $(PROGRAM): $(OBJS)
 .cpp.o:
 	$(CC) $(CFLAGS) -c $<
 
-.PHONY: clean
 clean:
 	$(RM) $(PROGRAM) $(OBJS)
 
 install:
-	$(MV) $(PROGRAM) $(INSTALL_DIR)
+	install -d $(PREFIX)
+	install -m 0755 $(PROGRAM) $(PREFIX)
 
 uninstall:
-	$(RM) $(INSTALL_DIR)$(PROGRAM)
+	$(RM) $(PREFIX)$(PROGRAM)
