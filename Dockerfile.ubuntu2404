@@ -121,7 +121,7 @@ RUN echo "**** Dependencies | base ****" && \
 RUN echo "**** Dependencies | tsduck ****" && \
 	set -euxo pipefail && \
 	apt-get update && \
-	_tsduckdownload_url="$(curl -sfSL https://api.github.com/repos/tsduck/tsduck/releases/latest | \
+	_tsduckdownload_url="$(curl -H "User-Agent: builder/1.0" -sfSL https://api.github.com/repos/tsduck/tsduck/releases/latest | \
 	jq -r '.assets[] | select(.name | startswith("tsduck_") and endswith("ubuntu24_amd64.deb")) | .browser_download_url')" && \
 	wget "${_tsduckdownload_url}" && \
 	apt-get -y install "./$(basename "$_tsduckdownload_url")" && \
