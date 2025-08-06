@@ -129,6 +129,7 @@ jobs:
             console.log('end run')
 
       - name: Generate new pre-release tag
+        if: ${{ github.event.pull_request.merged == true }}
         id: new_tag
         run: |
           set -euo pipefail
