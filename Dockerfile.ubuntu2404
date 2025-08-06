@@ -1160,6 +1160,7 @@ ARG PYTHONUNBUFFERED
 COPY --from=build-ffmpeg	"${PREFIX}"										"${PREFIX}"
 
 ## JLSTSL
+COPY --from=build-jlstsl	"${PREFIX}/versions_jlstsl.json"				"${PREFIX}/versions_jlstsl.json"
 COPY --from=build-jlstsl	"${PREFIX}/lib/liblsmash.a"						"${PREFIX}/lib"
 COPY --from=build-jlstsl	"${PREFIX}/lib/libobuparse.a"					"${PREFIX}/lib"
 COPY --from=build-jlstsl	"${PREFIX}/lib/avisynth/libconvertstacked.so"	"${PREFIX}/lib/avisynth"
@@ -1170,7 +1171,8 @@ COPY --from=build-jlstsl	"${PREFIX}/lib/avisynth/libtimestretch.so"		"${PREFIX}/
 
 RUN echo "**** FFmpeg | versions.json ****" && \
 	set -euxo pipefail && \
-	jq -s 'add' "${PREFIX}/versions_*.json" > "${PREFIX}/versions.json"
+	jq -s 'add | to_entries | sort_by(.key) | from_entries' \
+	${PREFIX}/versions_*.json > "${PREFIX}/versions.json"
 
 RUN echo "**** FFmpeg | check exec ****" && \
 	set -euxo pipefail && \
