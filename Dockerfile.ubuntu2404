@@ -86,6 +86,12 @@ ENV PATH="${PREFIX}/bin:${PATH}"
 
 SHELL ["/bin/bash", "-c"]
 
+RUN echo "**** Create directory ****" && \
+	set -euxo pipefail && \
+	mkdir -p "${PREFIX}" "${PREFIX}-src" "${PREFIX}/bin" "${PREFIX}/include" \
+	"${PREFIX}/lib" "${PREFIX}/lib/pkgconfig" "${PREFIX}/src" && \
+	echo "{}" > "${PREFIX}/versions.json"
+
 RUN echo "**** Dependencies | base ****" && \
 	set -euxo pipefail && \
 	apt-get update && \
@@ -119,7 +125,8 @@ RUN echo "**** Dependencies | tsduck ****" && \
 	jq -r '.assets[] | select(.name | startswith("tsduck_") and endswith("ubuntu24_amd64.deb")) | .browser_download_url')" && \
 	wget "${_tsduckdownload_url}" && \
 	apt-get -y install "./$(basename "$_tsduckdownload_url")" && \
-	tsp --version
+	tsp --version && \
+	rm -rf "./$(basename "$_tsduckdownload_url")"
 
 RUN echo "**** Dependencies | FFmpeg runtime ****" && \
 	set -euxo pipefail && \
@@ -171,6 +178,37 @@ RUN  echo "**** Nodejs | checking ****" && \
 	node -v && \
 	npm --version
 
+RUN echo "**** versions.json write ****" && \
+	set -euxo pipefail && \
+	FONTCONFIG_VERSION=$(dpkg-query -W -f='${Version}\n' fontconfig) \
+	FONTS_UBUNTU_VERSION=$(dpkg-query -W -f='${Version}\n' fonts-ubuntu) \
+	LIBBOOST_FILESYSTEM_DEV_VERSION=$(dpkg-query -W -f='${Version}\n' libboost-filesystem-dev) \
+	LIBBOOST_PROGRAM_OPTIONS_DEV_VERSION=$(dpkg-query -W -f='${Version}\n' libboost-program-options-dev) \
+	LIBBOOST_SYSTEM_DEV_VERSION=$(dpkg-query -W -f='${Version}\n' libboost-system-dev) \
+	LIBDRM_DEV_VERSION=$(dpkg-query -W -f='${Version}\n' libdrm-dev) \
+	LIBFONTCONFIG_VERSION=$(dpkg-query -W -f='${Version}\n' libfontconfig1) \
+	LIBFREETYPE_VERSION=$(dpkg-query -W -f='${Version}\n' libfreetype6) \
+	LIBFRIBIDI_DEV_VERSION=$(dpkg-query -W -f='${Version}\n' libfribidi-dev) \
+	LIBHARFBUZZ_DEV_VERSION=$(dpkg-query -W -f='${Version}\n' libharfbuzz-dev) \
+	LIBMP3LAME_VERSION=$(dpkg-query -W -f='${Version}\n' libmp3lame0) \
+	NODEJS_VERSION=$(dpkg-query -W -f='${Version}\n' nodejs) \
+	TSDUCK_VERSION=$(dpkg-query -W -f='${Version}\n' tsduck) \
+	jq -n '{ \
+	"fontconfig": env.FONTCONFIG_VERSION, \
+	"fonts-ubuntu": env.FONTS_UBUNTU_VERSION, \
+	"libboost-filesystem-dev": env.LIBBOOST_FILESYSTEM_DEV_VERSION, \
+	"libboost-program-options-dev": env.LIBBOOST_PROGRAM_OPTIONS_DEV_VERSION, \
+	"libboost-system-dev": env.LIBBOOST_SYSTEM_DEV, \
+	"libdrm-dev": env.LIBDRM_DEV_VERSION, \
+	"libfontconfig1": env.LIBFONTCONFIG_VERSION, \
+	"libfreetype": env.LIBFREETYPE_VERSION, \
+	"libfribidi-dev": env.LIBFRIBIDI_DEV_VERSION, \
+	"libharfbuzz-dev": env.LIBHARFBUZZ_DEV_VERSION, \
+	"libmp3lame": env.LIBMP3LAME_VERSION, \
+	"nodejs": env.NODEJS_VERSION, \
+	"tsduck": env.TSDUCK_VERSION, \
+	}' > "${PREFIX}/versions_base.json"
+
 
 #- -------------------------------------------------------------------------------------------------
 #- Build Base
@@ -180,11 +218,6 @@ ARG DEBCONF_NOWARNINGS
 ARG DEBIAN_FRONTEND
 ARG PREFIX
 ARG PYTHONUNBUFFERED
-
-RUN echo "**** Create directory ****" && \
-	set -euxo pipefail && \
-	mkdir -p "${PREFIX}" "${PREFIX}/bin" "${PREFIX}/include" \
-	"${PREFIX}/lib" "${PREFIX}/lib/pkgconfig" "${PREFIX}/src"
 
 RUN echo "**** Build Dependencies ****" && \
 	set -eux && \
@@ -228,6 +261,17 @@ RUN echo "**** Build Dependencies | FFmpeg ****" && \
 	apt-get -y autoremove && \
 	apt-get -y clean && \
 	rm -rf /var/lib/apt/lists/*
+
+RUN echo "**** versions.json write ****" && \
+	set -euxo pipefail && \
+	LIBFONTCONFIG_DEV_VERSION=$(dpkg-query -W -f='${Version}\n' libfontconfig-dev) \
+	LIBFREETYPE_DEV_VERSION=$(dpkg-query -W -f='${Version}\n' libfreetype-dev) \
+	LIBMP3LAME_DEV_VERSION=$(dpkg-query -W -f='${Version}\n' libmp3lame-dev) \
+	jq -n '{ \
+	"libfontconfig-dev": env.LIBFONTCONFIG_DEV_VERSION, \
+	"libfreetype-dev": env.LIBFREETYPE_DEV_VERSION, \
+	"libmp3lame-dev": env.LIBMP3LAME_DEV_VERSION, \
+	}' > "${PREFIX}/versions_build-base.json"
 
 # Copy scripts
 COPY						"scripts/check_static"							"${PREFIX}/bin/check_static"
@@ -278,7 +322,7 @@ RUN echo "**** Intel QSV | libva ****" && \
 	pkg-config --exists libva-drm && \
 	check_static "${PREFIX}/lib/libva-drm.a" permissive && \
 	cd "${PREFIX}" && \
-	mv -v libva "${PREFIX}/src"
+	mv -v libva "${PREFIX}-src"
 
 RUN echo "**** Intel QSV | gmmlib ****" && \
 	set -euxo pipefail && \
@@ -305,7 +349,7 @@ RUN echo "**** Intel QSV | gmmlib ****" && \
 	pkg-config --exists igdgmm && \
 	check_static "${PREFIX}/lib/libigdgmm.so" permissive && \
 	cd "${PREFIX}" && \
-	mv -v gmmlib "${PREFIX}/src"
+	mv -v gmmlib "${PREFIX}-src"
 
 # Ref: https://github.com/intel/media-driver/wiki/Alchemist(DG2)-and-ATSM-Setup
 # ENABLE_PRODUCTION_KMD=ON
@@ -338,7 +382,7 @@ RUN echo "**** Intel QSV | media-driver ****" && \
 	pkg-config --exists igfxcmrt && \
 	check_static "${PREFIX}/lib/libigfxcmrt.so" permissive && \
 	cd "${PREFIX}" && \
-	mv -v media-driver "${PREFIX}/src"
+	mv -v media-driver "${PREFIX}-src"
 
 RUN echo "**** Intel QSV | libvpl ****" && \
 	set -euxo pipefail && \
@@ -364,7 +408,7 @@ RUN echo "**** Intel QSV | libvpl ****" && \
 	pkg-config --exists vpl && \
 	check_static "${PREFIX}/lib/libvpl.a" permissive && \
 	cd "${PREFIX}" && \
-	mv -v libvpl "${PREFIX}/src"
+	mv -v libvpl "${PREFIX}-src"
 
 RUN echo "**** Intel QSV | VPL Runtime ****" && \
 	set -euxo pipefail && \
@@ -387,7 +431,18 @@ RUN echo "**** Intel QSV | VPL Runtime ****" && \
 	pkg-config --exists libmfx-gen && \
 	check_static "${PREFIX}/lib/libmfx-gen.so" permissive && \
 	cd "${PREFIX}" && \
-	mv -v vpl-gpu-rt "${PREFIX}/src"
+	mv -v vpl-gpu-rt "${PREFIX}-src"
+
+RUN echo "**** Intel QSV | versions.json write ****" && \
+	set -euxo pipefail && \
+	jq -n '{ \
+	"libigdgmm": env.INTEL_GMMLIB_VERSION, \
+	"libigfxcmrt": env.INTEL_MEDIA_DRIVER_VERSION, \
+	"libmfx-gen": env.INTEL_VPL_GPU_RT_VERSION, \
+	"libva-drm": env.INTEL_LIBVA_VERSION, \
+	"libva": env.INTEL_LIBVA_VERSION, \
+	"libvpl": env.INTEL_LIBVPL_VERSION, \
+	}' > "${PREFIX}/versions_qsv.json"
 
 
 #- -------------------------------------------------------------------------------------------------
@@ -417,7 +472,7 @@ ARG AV1_DAV1D_VERSION \
 # Copy tools from build-base stage
 COPY --from=build-base		"${PREFIX}"										"${PREFIX}"
 
-RUN echo "**** dav1d ****" && \
+RUN echo "**** library | dav1d ****" && \
 	set -euxo pipefail && \
 	cd "${PREFIX}" && \
 	git clone --depth 1 -b "${AV1_DAV1D_VERSION}" https://code.videolan.org/videolan/dav1d.git && \
@@ -437,9 +492,9 @@ RUN echo "**** dav1d ****" && \
 	pkg-config --exists dav1d && \
 	check_static "${PREFIX}/lib/libdav1d.a" permissive && \
 	cd "${PREFIX}" && \
-	mv -v dav1d "${PREFIX}/src"
+	mv -v dav1d "${PREFIX}-src"
 
-RUN echo "**** SVT-AV1 ****" && \
+RUN echo "**** library | SVT-AV1 ****" && \
 	set -euxo pipefail && \
 	cd "${PREFIX}" && \
 	git clone --depth 1 -b "${AV1_SVTAV1_VERSION}" https://gitlab.com/AOMediaCodec/SVT-AV1.git && \
@@ -460,9 +515,9 @@ RUN echo "**** SVT-AV1 ****" && \
 	pkg-config --exists SvtAv1Enc && \
 	check_static "${PREFIX}/lib/libSvtAv1Enc.a" permissive && \
 	cd "${PREFIX}" && \
-	mv -v SVT-AV1 "${PREFIX}/src"
+	mv -v SVT-AV1 "${PREFIX}-src"
 
-RUN echo "**** libaribcaption ****" && \
+RUN echo "**** library | libaribcaption ****" && \
 	set -euxo pipefail && \
 	cd "${PREFIX}" && \
 	git clone --depth 1 -b "${LIBARIBCAPTION_VERSION}" https://github.com/xqq/libaribcaption.git && \
@@ -480,9 +535,9 @@ RUN echo "**** libaribcaption ****" && \
 	pkg-config --exists libaribcaption && \
 	check_static "${PREFIX}/lib/libaribcaption.a" permissive && \
 	cd "${PREFIX}" && \
-	mv -v libaribcaption "${PREFIX}/src"
+	mv -v libaribcaption "${PREFIX}-src"
 
-RUN echo "**** libvpx ****" && \
+RUN echo "**** library | libvpx ****" && \
 	set -euxo pipefail && \
 	cd "${PREFIX}" && \
 	git clone --depth 1 -b "${LIBVPX_VERSION}" https://github.com/webmproject/libvpx.git && \
@@ -510,9 +565,9 @@ RUN echo "**** libvpx ****" && \
 	pkg-config --exists vpx && \
 	check_static "${PREFIX}/lib/libvpx.a" permissive && \
 	cd "${PREFIX}" && \
-	mv -v libvpx "${PREFIX}/src"
+	mv -v libvpx "${PREFIX}-src"
 
-RUN echo "**** opus ****" && \
+RUN echo "**** library | opus ****" && \
 	set -euxo pipefail && \
 	cd "${PREFIX}" && \
 	git clone --depth 1 -b "${OPUS_VERSION}" https://github.com/xiph/opus.git && \
@@ -532,9 +587,9 @@ RUN echo "**** opus ****" && \
 	pkg-config --exists opus && \
 	check_static "${PREFIX}/lib/libopus.a" permissive && \
 	cd "${PREFIX}" && \
-	mv -v opus "${PREFIX}/src"
+	mv -v opus "${PREFIX}-src"
 
-RUN echo "**** libvmaf ****" && \
+RUN echo "**** library | libvmaf ****" && \
 	set -euxo pipefail && \
 	cd "${PREFIX}" && \
 	git clone --depth 1 -b "${VMAF_VERSION}" https://github.com/Netflix/vmaf.git && \
@@ -557,9 +612,9 @@ RUN echo "**** libvmaf ****" && \
 	pkg-config --exists libvmaf && \
 	check_static "${PREFIX}/lib/libvmaf.a" permissive && \
 	cd "${PREFIX}" && \
-	mv -v vmaf* "${PREFIX}/src"
+	mv -v vmaf* "${PREFIX}-src"
 
-RUN echo "**** x264 ****" && \
+RUN echo "**** library | x264 ****" && \
 	set -euxo pipefail && \
 	cd "${PREFIX}" && \
 	mkdir -p x264 && \
@@ -583,9 +638,9 @@ RUN echo "**** x264 ****" && \
 	pkg-config --exists x264 && \
 	check_static "${PREFIX}/lib/libx264.a" permissive && \
 	cd "${PREFIX}" && \
-	mv -v x264 "${PREFIX}/src"
+	mv -v x264 "${PREFIX}-src"
 
-RUN echo "**** x265 ****" && \
+RUN echo "**** library | x265 ****" && \
 	set -euxo pipefail && \
 	cd "${PREFIX}" && \
 	git clone --depth 1 -b "${X265_VERSION}" https://bitbucket.org/multicoreware/x265_git.git x265 && \
@@ -605,9 +660,9 @@ RUN echo "**** x265 ****" && \
 	pkg-config --exists x265 && \
 	check_static "${PREFIX}/lib/libx265.a" permissive && \
 	cd "${PREFIX}" && \
-	mv -v x265 "${PREFIX}/src"
+	mv -v x265 "${PREFIX}-src"
 
-RUN echo "**** AviSynth+ ****" && \
+RUN echo "**** library | AviSynth+ ****" && \
 	set -euxo pipefail && \
 	cd "${PREFIX}" && \
 	git clone --depth 1 -b "${AVISYNTHPLUS_VERSION}" https://github.com/AviSynth/AviSynthPlus.git && \
@@ -629,7 +684,28 @@ RUN echo "**** AviSynth+ ****" && \
 	check_static "${PREFIX}/lib/avisynth/libshibatch.so" permissive && \
 	check_static "${PREFIX}/lib/avisynth/libtimestretch.so" permissive && \
 	cd "${PREFIX}" && \
-	mv -v AviSynthPlus "${PREFIX}/src"
+	mv -v AviSynthPlus "${PREFIX}-src"
+
+RUN echo "**** library | versions.json write ****" && \
+	set -euxo pipefail && \
+	LIBCONVERTSTACKED_VERSION=$(pkg-config --modversion libconvertstacked) \
+	LIBSHIBATCH_VERSION=$(pkg-config --modversion libshibatch) \
+	LIBTIMESTRETCH_VERSION=$(pkg-config --modversion libtimestretch) \
+	\
+	jq -n '{ \
+	"libaribcaption": env.LIBARIBCAPTION_VERSION, \
+	"libavisynth": env.AVISYNTHPLUS_VERSION, \
+	"libconvertstacked": env.LIBCONVERTSTACKED_VERSION, \
+	"libdav1d": env.AV1_DAV1D_VERSION, \
+	"libopus": env.OPUS_VERSION, \
+	"libshibatch": env.LIBSHIBATCH_VERSION, \
+	"libSvtAv1Enc": env.AV1_SVTAV1_VERSION, \
+	"libtimestretch": env.LIBTIMESTRETCH_VERSION, \
+	"libvmaf": env.VMAF_VERSION, \
+	"libvpx": env.LIBVPX_VERSION, \
+	"libx264": env.X264_VERSION, \
+	"libx265": env.X265_VERSION, \
+	}' > "${PREFIX}/versions_library.json"
 
 
 #- -------------------------------------------------------------------------------------------------
@@ -659,7 +735,7 @@ RUN echo "**** FFmpeg ****" && \
 	# force 'set -eux'
 	set -eux && \
 	cd "${PREFIX}" && \
-	git clone --depth 1 -b "${FFMPEG_VERSION}" https://github.com/FFmpeg/FFmpeg.git ffmpeg && \
+	git clone --depth 1 -b "${FFMPEG_VERSION}" https://github.com/FFmpeg/FFmpeg.git "ffmpeg-${FFMPEG_VERSION}" && \
 	set +u && \
 	echo "=== Build Environment ===" && \
 	echo "= Compile settings" && \
@@ -674,7 +750,7 @@ RUN echo "**** FFmpeg ****" && \
 	echo "=========================" && \
 	set -u && \
 	\
-	cd ffmpeg && \
+	cd "ffmpeg-${FFMPEG_VERSION}" && \
 	./configure \
 	# License
 	--enable-gpl \
@@ -737,7 +813,13 @@ RUN echo "**** FFmpeg ****" && \
 	pkg-config --exists libswscale && \
 	check_static "${PREFIX}/lib/libswscale.a" strict && \
 	cd "${PREFIX}" && \
-	mv -v ffmpeg* "${PREFIX}/src"
+	mv -v "ffmpeg-${FFMPEG_VERSION}" "${PREFIX}-src"
+
+RUN echo "**** ffmpeg | versions.json write ****" && \
+	set -euxo pipefail && \
+	jq -n '{ \
+	"ffmpeg": env.FFMPEG_VERSION, \
+	}' > "${PREFIX}/versions_ffmpeg.json"
 
 
 #- -------------------------------------------------------------------------------------------------
@@ -758,18 +840,19 @@ ARG CFLAGS \
 ## Due to code agreements with l-smash and L-SMASH-Works,
 ## use with FFmpeg 7.0.0 or higher is unstable, so the version will be fixed.
 ## Ref: https://github.com/dwbuiten/obuparse/commits/master/
-ARG OBUPARSE_VERSION=478adcc872d5a8a19443e87910508e261a0a60ba
+ARG JLSTSL_OBUPARSE_VERSION=478adcc872d5a8a19443e87910508e261a0a60ba
 
 ## FFmpeg
 ### Ref: https://github.com/FFmpeg/FFmpeg/tags
-ARG FFMPEG_VERSION=n6.1.2
+ARG JLSTSL_FFMPEG_VERSION=n6.1.2
 
-## Ref: https://github.com/vimeo/l-smash
-ARG LSMASH_VERSION=62a93fb6a23b013d38f30fcb827c2abda69ee3d1
+## L-SMASH
+ARG JLSTSL_LSMASH_URL=https://github.com/vimeo/l-smash.git
+ARG JLSTSL_LSMASH_VERSION=62a93fb6a23b013d38f30fcb827c2abda69ee3d1
 
 ## L-SMASH-Works
-### Ref: https://github.com/HomeOfAviSynthPlusEvolution/L-SMASH-Works/releases
-ARG LSMASHWORKS_VERSION=1170.0.0.0
+ARG JLSTSL_LSMASHWORKS_URL=https://github.com/HomeOfAviSynthPlusEvolution/L-SMASH-Works.git
+ARG JLSTSL_LSMASHWORKS_VERSION=1170.0.0.0
 # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> WARNING <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
 COPY --from=build-library	"${PREFIX}"										"${PREFIX}"
@@ -778,11 +861,11 @@ COPY --from=build-library	"${PREFIX}"										"${PREFIX}"
 # ldfalgs -Wl,--allow-multiple-definition is a workaround for linking with multiple rust staticlib to
 # not cause collision in toolchain symbols, see comment in checkdupsym script for details.
 # Ref: https://github.com/wader/static-ffmpeg/blob/master/Dockerfile
-RUN echo "**** FFmpeg ****" && \
+RUN echo "**** JLSTSL | FFmpeg ****" && \
 	# force 'set -eux'
 	set -eux && \
 	cd "${PREFIX}" && \
-	git clone --depth 1 -b "${FFMPEG_VERSION}" https://github.com/FFmpeg/FFmpeg.git ffmpeg && \
+	git clone --depth 1 -b "${JLSTSL_FFMPEG_VERSION}" https://github.com/FFmpeg/FFmpeg.git ffmpeg-jlstsl && \
 	set +u && \
 	echo "=== Build Environment ===" && \
 	echo "= Compile settings" && \
@@ -797,7 +880,7 @@ RUN echo "**** FFmpeg ****" && \
 	echo "=========================" && \
 	set -u && \
 	\
-	cd ffmpeg && \
+	cd ffmpeg-jlstsl && \
 	./configure \
 	--disable-programs \
 	--disable-encoders \
@@ -866,17 +949,17 @@ RUN echo "**** FFmpeg ****" && \
 	pkg-config --exists libswscale && \
 	check_static "${PREFIX}/lib/libswscale.a" strict && \
 	cd "${PREFIX}" && \
-	mv -v ffmpeg* "${PREFIX}/src"
+	mv -v ffmpeg-jlstsl "${PREFIX}-src"
 
 ## obuparse
-RUN echo "**** obuparse | build ****" && \
+RUN echo "**** JLSTSL | obuparse | build ****" && \
 	set -euxo pipefail && \
 	cd "${PREFIX}" && \
 	mkdir -p obuparse && \
 	cd obuparse && \
 	git init && \
 	git remote add origin https://github.com/dwbuiten/obuparse.git && \
-	git fetch --depth 1 origin "${OBUPARSE_VERSION}" && \
+	git fetch --depth 1 origin "${JLSTSL_OBUPARSE_VERSION}" && \
 	git checkout FETCH_HEAD && \
 	\
 	make -j$(nproc) PREFIX=${PREFIX} libobuparse.a && \
@@ -884,10 +967,10 @@ RUN echo "**** obuparse | build ****" && \
 	make clean && \
 	\
 	cd "${PREFIX}" && \
-	mv -v obuparse "${PREFIX}/src"
+	mv -v obuparse "${PREFIX}-src"
 
 RUN <<EOF
-echo "**** obuparse | pkgconfig ****"
+echo "**** JLSTSL | obuparse | pkgconfig ****"
 set -euxo pipefail
 
 cat <<- _DOC_ > ${PREFIX}/lib/pkgconfig/obuparse.pc
@@ -896,26 +979,26 @@ includedir=\${prefix}/include
 
 Name: obuparse
 Description: A simple and portable single file AV1 OBU parser.
-Version: ${OBUPARSE_VERSION}
+Version: ${JLSTSL_OBUPARSE_VERSION}
 
 Cflags: -I\${includedir}
 _DOC_
 EOF
 
-RUN echo "**** obuparse | check ****" && \
+RUN echo "**** JLSTSL | obuparse | check ****" && \
 	set -euxo pipefail && \
 	pkg-config --exists obuparse && \
 	check_static "${PREFIX}/lib/libobuparse.a" permissive
 
 ## l-smash
-RUN echo "**** l-smash ****" && \
+RUN echo "**** JLSTSL | l-smash ****" && \
 	set -euxo pipefail && \
 	cd "${PREFIX}" && \
 	mkdir -p l-smash && \
 	cd l-smash && \
 	git init && \
-	git remote add origin https://github.com/vimeo/l-smash.git && \
-	git fetch --depth 1 origin "${LSMASH_VERSION}" && \
+	git remote add origin "${JLSTSL_LSMASH_URL}" && \
+	git fetch --depth 1 origin "${JLSTSL_LSMASH_VERSION}" && \
 	git checkout FETCH_HEAD && \
 	./configure \
 	--extra-cflags="${CFLAGS} -I${PREFIX}/include" \
@@ -929,17 +1012,17 @@ RUN echo "**** l-smash ****" && \
 	pkg-config --exists liblsmash && \
 	check_static "${PREFIX}/lib/liblsmash.a" permissive && \
 	cd "${PREFIX}" && \
-	mv -v l-smash "${PREFIX}/src"
+	mv -v l-smash "${PREFIX}-src"
 
 ## L-SMASH-Works
-RUN echo "**** L-SMASH-Works | build ****" && \
+RUN echo "**** JLSTSL | L-SMASH-Works | build ****" && \
 	set -euxo pipefail && \
 	cd "${PREFIX}" && \
 	mkdir -p L-SMASH-Works && \
 	cd L-SMASH-Works && \
 	git init && \
-	git remote add origin https://github.com/HomeOfAviSynthPlusEvolution/L-SMASH-Works.git && \
-	git fetch --depth 1 origin "${LSMASHWORKS_VERSION}" && \
+	git remote add origin "${JLSTSL_LSMASHWORKS_URL}" && \
+	git fetch --depth 1 origin "${JLSTSL_LSMASHWORKS_VERSION}" && \
 	git checkout FETCH_HEAD && \
 	cd AviSynth && \
 	LDFLAGS="-Wl,-Bsymbolic" meson build && \
@@ -949,14 +1032,14 @@ RUN echo "**** L-SMASH-Works | build ****" && \
 	ninja -v -t clean && \
 	\
 	cd "${PREFIX}" && \
-	mv -v L-SMASH-Works "${PREFIX}/src"
+	mv -v L-SMASH-Works "${PREFIX}-src"
 
 RUN <<EOF
-echo "**** L-SMASH-Works | pkgconfig ****"
+echo "**** JLSTSL | L-SMASH-Works | pkgconfig ****"
 cat <<- _DOC_ > ${PREFIX}/lib/pkgconfig/liblsmashsource.pc
 Name: L-SMASH-Works
 Description: Note about LSMASHVideoSource and LibavSMASHSource.
-Version: ${LSMASHWORKS_VERSION}
+Version: ${JLSTSL_LSMASHWORKS_VERSION}
 
 Libs: -L${PREFIX}/lib/avisynth -llsmashsource \
       -L${PREFIX}/lib -lavformat -lavcodec -lavutil \
@@ -965,7 +1048,7 @@ Libs: -L${PREFIX}/lib/avisynth -llsmashsource \
 _DOC_
 EOF
 
-RUN echo "**** L-SMASH-Works | check ****" && \
+RUN echo "**** JLSTSL | L-SMASH-Works | check ****" && \
 	set -euxo pipefail && \
 	pkg-config --exists liblsmashsource && \
 	check_static "${PREFIX}/lib/avisynth/liblsmashsource.so" permissive
@@ -974,12 +1057,12 @@ RUN echo "**** L-SMASH-Works | check ****" && \
 #- Build JoinLogoScpTrialSetLinux
 #-
 
-COPY						modules											"${PREFIX}/src/JLSTSL/modules"
-ARG _JLSTLDIR="${PREFIX}/src/JLSTSL/modules/join_logo_scp_trial"
-ARG _BINDIR="${PREFIX}/src/JLSTSL/modules/join_logo_scp_trial"
+COPY						modules											"${PREFIX}-src/JLSTSL/modules"
+ARG _JLSTLDIR="${PREFIX}-src/JLSTSL/modules/join_logo_scp_trial"
+ARG _BINDIR="${PREFIX}-src/JLSTSL/modules/join_logo_scp_trial"
 RUN echo "**** JLSTSL | chapter_exe ****" && \
 	set -euxo pipefail && \
-	cd "${PREFIX}/src/JLSTSL/modules/chapter_exe/src" && \
+	cd "${PREFIX}-src/JLSTSL/modules/chapter_exe/src" && \
 	\
 	make -j$(nproc) && \
 	make PREFIX="${_JLSTLDIR}" install && \
@@ -988,7 +1071,7 @@ RUN echo "**** JLSTSL | chapter_exe ****" && \
 
 RUN echo "**** JLSTSL | logoframe ****" && \
 	set -euxo pipefail && \
-	cd "${PREFIX}/src/JLSTSL/modules/logoframe/src" && \
+	cd "${PREFIX}-src/JLSTSL/modules/logoframe/src" && \
 	\
 	make -j$(nproc) && \
 	make PREFIX="${_JLSTLDIR}" install && \
@@ -998,7 +1081,7 @@ RUN echo "**** JLSTSL | logoframe ****" && \
 
 RUN echo "**** JLSTSL | join_logo_scp ****" && \
 	set -euxo pipefail && \
-	cd "${PREFIX}/src/JLSTSL/modules/join_logo_scp/src" && \
+	cd "${PREFIX}-src/JLSTSL/modules/join_logo_scp/src" && \
 	\
 	make -j$(nproc) && \
 	make PREFIX="${_JLSTLDIR}" install && \
@@ -1008,7 +1091,7 @@ RUN echo "**** JLSTSL | join_logo_scp ****" && \
 
 RUN echo "**** JLSTSL | tsdivider ****" && \
 	set -euxo pipefail && \
-	cd "${PREFIX}/src/JLSTSL/modules/tsdivider/" && \
+	cd "${PREFIX}-src/JLSTSL/modules/tsdivider/" && \
 	mkdir -p build && cd build && \
 	cmake -G "Unix Makefiles" \
 	-DCMAKE_BUILD_TYPE=Release \
@@ -1026,7 +1109,7 @@ RUN echo "**** JLSTSL | tsdivider ****" && \
 
 RUN echo "**** JLSTSL | delogo ****" && \
 	set -euxo pipefail && \
-	cd "${PREFIX}/src/JLSTSL/modules/delogo/src" && \
+	cd "${PREFIX}-src/JLSTSL/modules/delogo/src" && \
 	\
 	make -j$(nproc) && \
 	make PREFIX="${PREFIX}/lib/avisynth" install && \
@@ -1036,20 +1119,29 @@ RUN echo "**** JLSTSL | delogo ****" && \
 
 RUN echo "**** JLSTSL | join_logo_scp_trial ****" && \
 	set -euxo pipefail && \
-	cd "${PREFIX}/src/JLSTSL/modules/join_logo_scp_trial" && \
+	cd "${PREFIX}-src/JLSTSL/modules/join_logo_scp_trial" && \
 	node -v && \
 	npm --version && \
 	npm install --no-save --loglevel=info --omit=dev
 
 RUN echo "**** JLSTSL | Copy directory ****" && \
 	set -euxo pipefail && \
-	mv -v ${PREFIX}/src/JLSTSL/modules/join_logo_scp_trial /join_logo_scp_trial && \
+	mv -v ${PREFIX}-src/JLSTSL/modules/join_logo_scp_trial /join_logo_scp_trial && \
 	rm -rf /join_logo_scp_trial/JL && \
-	cp -av "${PREFIX}/src/JLSTSL/modules/join_logo_scp/JL" /join_logo_scp_trial/ && \
+	cp -av "${PREFIX}-src/JLSTSL/modules/join_logo_scp/JL" /join_logo_scp_trial/ && \
 	test -f /join_logo_scp_trial/JL/data/ChList.csv && \
 	\
 	cd /join_logo_scp_trial && \
 	npm link
+
+RUN echo "**** JLSTSL | versions.json write ****" && \
+	set -euxo pipefail && \
+	jq -n '. + { \
+	"ffmpeg-jlstsl": env.JLSTSL_FFMPEG_VERSION, \
+	"liblsmash": env.JLSTSL_LSMASH_VERSION, \
+	"liblsmashsource": env.JLSTSL_LSMASHWORKS_VERSION, \
+	"libobuparse": env.JLSTSL_OBUPARSE_VERSION, \
+	}' > "${PREFIX}/versions_jlstsl.json"
 
 
 #- -------------------------------------------------------------------------------------------------
@@ -1075,6 +1167,10 @@ COPY --from=build-jlstsl	"${PREFIX}/lib/avisynth/libdelogo.so"			"${PREFIX}/lib/
 COPY --from=build-jlstsl	"${PREFIX}/lib/avisynth/liblsmashsource.so"		"${PREFIX}/lib/avisynth"
 COPY --from=build-jlstsl	"${PREFIX}/lib/avisynth/libshibatch.so"			"${PREFIX}/lib/avisynth"
 COPY --from=build-jlstsl	"${PREFIX}/lib/avisynth/libtimestretch.so"		"${PREFIX}/lib/avisynth"
+
+RUN echo "**** FFmpeg | versions.json ****" && \
+	set -euxo pipefail && \
+	jq -s 'add' "${PREFIX}/versions_*.json" > "${PREFIX}/versions.json"
 
 RUN echo "**** FFmpeg | check exec ****" && \
 	set -euxo pipefail && \
