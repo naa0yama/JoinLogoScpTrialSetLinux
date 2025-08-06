@@ -99,7 +99,12 @@ RUN echo "**** Dependencies | base ****" && \
 	tzdata \
 	wget \
 	# jtv_gen.sh
-	bc grep mawk coreutils jq \
+	bc \
+	coreutils \
+	fontconfig \
+	grep \
+	jq \
+	mawk \
 	&& \
 	\
 	# Cleanup \
@@ -121,10 +126,10 @@ RUN echo "**** Dependencies | FFmpeg runtime ****" && \
 	apt-get update && \
 	apt-get -y upgrade && \
 	apt-get -y install --no-install-recommends \
-	libdrm-dev \
-	libfontconfig1 \
-	libfreetype6 \
-	libmp3lame0 \
+	# DRM and mp3lame
+	libdrm-dev libmp3lame0 \
+	# FFmpeg filter drawtext
+	fonts-ubuntu libfontconfig1 libfreetype6 libfribidi-dev libharfbuzz-dev \
 	&& \
 	\
 	# Cleanup \
@@ -680,7 +685,10 @@ RUN echo "**** FFmpeg ****" && \
 	--enable-avisynth \
 	--enable-libaribcaption \
 	--enable-libdav1d \
+	--enable-libfontconfig \
 	--enable-libfreetype \
+	--enable-libfribidi \
+	--enable-libharfbuzz \
 	--enable-libmp3lame \
 	--enable-libopus \
 	--enable-libsvtav1 \
