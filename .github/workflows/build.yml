@@ -89,6 +89,7 @@ jobs:
           context: .
           file: Dockerfile.${{ matrix.type }}
           push: ${{ contains( github.event.pull_request.merged, true ) || inputs.rebuild == 'true' || github.event_name == 'release' }}
+          load: true
           cache-from: type=gha
           cache-to: type=gha,mode=max
           tags: ${{ steps.meta.outputs.tags }}
