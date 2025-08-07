@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 set -euxo pipefail
 
-RUN_TYPE="${1:-}"
 LOG_FILE="${LOG_FILE:-/tmp/test_jlse.log}"
 NO_COLOR="${NO_COLOR:-no}"
+INPUT="${INPUT:-/source/jtv_scene_06min.ts}"
 
 # Initialize log
 : > "$LOG_FILE"
@@ -36,27 +36,19 @@ logger() {
 	echo "${message}" >> "${LOG_FILE}"
 }
 
-if [ "${RUN_TYPE}" == "find" ]; then
-	logger "Find test. ${INPUT}" yellow
-	find /source -type f -name '*.ts' -exec env INPUT="{}" \
-	jlse --input "{}" --encode \
-		--option ' -vf yadif -map 0:v -aspect 16:9 -c:v libx264 -preset veryfast -movflags faststart -f mp4 -map 0:a -c:a aac -bsf:a aac_adtstoasc' \;
+logger "Default test. ${INPUT}" yellow
+if [[ ! -f "${INPUT}" ]]; then
+	logger "Default testfile not found."
+	logger "Generate ts file."
+	JTV_TEMP=$(mktemp -q -d)
+	cd "${JTV_TEMP}"
+	curl -o jtv_gen.sh -sfSL https://raw.githubusercontent.com/naa0yama/jtv-gen/refs/heads/main/jtv_gen.sh
+	chmod +x jtv_gen.sh
+	./jtv_gen.sh -y
 
-else
-	INPUT="/source/jtv_scene_06min.ts"
-	logger "Default test. ${INPUT}" yellow
-	if [[ ! -f "${INPUT}" ]]; then
-		logger "Default testfile not found."
-		logger "Generate ts file."
-		JTV_TEMP=$(mktemp -q -d)
-		cd "${JTV_TEMP}"
-		curl -o jtv_gen.sh -sfSL https://raw.githubusercontent.com/naa0yama/jtv-gen/refs/heads/main/jtv_gen.sh
-		chmod +x jtv_gen.sh
-		./jtv_gen.sh -y
-
-		logger "Copy ${INPUT}"
-		cp output/scene_06min/jtv_scene_06min.ts /source
-	fi
+	logger "Copy ${INPUT}"
+	cp output/scene_06min/jtv_scene_06min.ts /source
+fi
 
 	jlse --input "${INPUT}" --encode \
 		--option ' -map 0:v -aspect 16:9 -c:v libx264 -preset veryfast -movflags faststart -f mp4 -map 0:a -c:a aac -bsf:a aac_adtstoasc' \;

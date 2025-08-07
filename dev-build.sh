@@ -84,7 +84,8 @@ else
 	fi
 
 	set +u -x
-	time docker build ${BUILD_TARGET} -t "tmp-${DOCKER_TAG}" -f "Dockerfile.${DOCKER_TAG}" .
+	time docker build ${BUILD_TARGET} \
+	-t "tmp-${DOCKER_TAG}" -f "Dockerfile.${DOCKER_TAG}" . > /dev/null
 	set -u +x
 fi
 
