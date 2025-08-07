@@ -115,7 +115,7 @@ jobs:
             echo "**Exit code:** $BUILD_EXIT_CODE"
             echo ""
             echo "\`\`\`bash"
-            cat ./source/test_jlse.log
+            cat ./videos/source/test_jlse.log
             echo "\`\`\`"
           } >> $GITHUB_STEP_SUMMARY
 
