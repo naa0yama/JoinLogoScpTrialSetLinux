@@ -143,6 +143,7 @@ if [ "${DOCKER_SHELL}" == "yes" ]; then
 else
 	# デフォルトコマンドで実行
 	time docker run ${DOCKER_OPTS} ${DOCKER_TTY_OPTS} --rm \
+		-e LOG_FILE="/source/test_jlse.log" \
 		-v $PWD/videos/source:/source \
 		-v $PWD/modules/join_logo_scp_trial/logo:/join_logo_scp_trial/logo \
 		-v $PWD/modules/join_logo_scp_trial/JL:/join_logo_scp_trial/JL \

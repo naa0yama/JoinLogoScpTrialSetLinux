@@ -2,38 +2,81 @@
 set -euxo pipefail
 
 RUN_TYPE="${1:-}"
+LOG_FILE="${LOG_FILE:-/tmp/test_jlse.log}"
+NO_COLOR="${NO_COLOR:-no}"
+
+# Initialize log
+: > "$LOG_FILE"
+
+# Color Palette
+if [[ "${NO_COLOR}" == "no" ]]; then
+	declare -A COLORS=(
+		["red"]='\033[0;31m'	["green"]='\033[0;32m'	["yellow"]='\033[0;33m'
+		["blue"]='\033[0;34m'	["purple"]='\033[0;35m'	["cyan"]='\033[0;36m'
+		["white"]='\033[0;37m'	["bold"]='\033[1m'		["reset"]='\033[0m'
+	)
+else
+	declare -A COLORS=(
+		["red"]=''				["green"]=''			["yellow"]=''
+		["blue"]=''				["purple"]=''			["cyan"]=''
+		["white"]=''			["bold"]=''				["reset"]=''
+	)
+fi
+
+logger() {
+	local message="${1}"
+	local color="${2:-white}"
+
+	# Colored output to terminal
+	echo -e "${COLORS[$color]} ${message}${COLORS[reset]}"
+
+	# Output to log file without color
+	local log_dir=$(dirname "${LOG_FILE}")
+	[[ ! -d "${log_dir}" ]] && mkdir -p "${log_dir}"
+	echo "${message}" >> "${LOG_FILE}"
+}
 
 if [ "${RUN_TYPE}" == "find" ]; then
-	echo -e "\033[0;33mFind test. ${INPUT}\033[0m"
+	logger "Find test. ${INPUT}" yellow
 	find /source -type f -name '*.ts' -exec env INPUT="{}" \
 	jlse --input "{}" --encode \
 		--option ' -vf yadif -map 0:v -aspect 16:9 -c:v libx264 -preset veryfast -movflags faststart -f mp4 -map 0:a -c:a aac -bsf:a aac_adtstoasc' \;
 
 else
 	INPUT="/source/jtv_scene_06min.ts"
-	echo -e "\033[0;33mDefault test. ${INPUT}\033[0m"
+	logger "Default test. ${INPUT}" yellow
 	if [[ ! -f "${INPUT}" ]]; then
-		echo "Default testfile not found."
-		echo "Generate ts file."
+		logger "Default testfile not found."
+		logger "Generate ts file."
 		JTV_TEMP=$(mktemp -q -d)
 		cd "${JTV_TEMP}"
 		curl -o jtv_gen.sh -sfSL https://raw.githubusercontent.com/naa0yama/jtv-gen/refs/heads/main/jtv_gen.sh
 		chmod +x jtv_gen.sh
 		./jtv_gen.sh -y
 
-		echo "Copy ${INPUT}"
-		cp -av output/scene_06min/jtv_scene_06min.ts /source
+		logger "Copy ${INPUT}"
+		cp output/scene_06min/jtv_scene_06min.ts /source
 	fi
 
 	jlse --input "${INPUT}" --encode \
 		--option ' -map 0:v -aspect 16:9 -c:v libx264 -preset veryfast -movflags faststart -f mp4 -map 0:a -c:a aac -bsf:a aac_adtstoasc' \;
-	duration=$(ffprobe -v error -show_entries format=duration -of csv=p=0 "${INPUT%.ts}.mp4")
-	if (( ${duration%.*} >= 208 && ${duration%.*} <= 212 )); then
-		echo -e "\033[0;32mOK: duration=${duration%.*} Complete jlse is running normally.\033[0m"
+	src_duration=$(ffprobe -v error -show_entries format=duration -of csv=p=0 "${INPUT}")
+	dst_duration=$(ffprobe -v error -show_entries format=duration -of csv=p=0 "${INPUT%.ts}.mp4")
+	set +x
+	logger "## ============================================================================="
+	logger "## Report test_jlse."
+	logger "## - source:       ${INPUT}"
+	logger "##    - duration:  ${src_duration%.*}"
+	logger "## - destnation:   ${INPUT%.ts}.mp4"
+	logger "##    - duration:  ${dst_duration%.*}"
+	logger "##"
+	if (( ${dst_duration%.*} >= 208 && ${dst_duration%.*} <= 212 )); then
+		logger "## duration=${dst_duration%.*} Complete jlse is running normally." green
 	else
-		echo -e "\033[0;31mNG: duration=${duration%.*}\033[0m"
-		echo "The jlse cut range is higher or lower than expected (normal value is between 208-212 seconds)."
+		logger "## duration=${dst_duration%.*}" red
+		logger "## The jlse cut range is higher or lower than expected (normal value is between 208-212 seconds)." red
 		exit 1
 	fi
-	echo -e "\033[0;32mComplete test_jlse.\033[0m"
+	logger "##     Complete test_jlse." green
+	logger "##     logfile: ${LOG_FILE}" green
 fi

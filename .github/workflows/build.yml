@@ -100,6 +100,25 @@ jobs:
         run: |
           set -euxo pipefail
           bash dev-build.sh --gh-action "${{ steps.meta.outputs.tags }}"
+          BUILD_EXIT_CODE=$?
+
+          if [ $BUILD_EXIT_CODE -eq 0 ]; then
+            STATUS="✅ 成功"
+          else
+            STATUS="❌ 失敗"
+          fi
+
+          # Action Summary作成
+          {
+            echo "# ビルド実行結果"
+            echo "**ステータス:** $STATUS"
+            echo "**終了コード:** $BUILD_EXIT_CODE"
+            echo ""
+            echo "## 実行ログ"
+            echo "\`\`\`bash"
+            cat ./source/test_jlse.log
+            echo "\`\`\`"
+          } >> $GITHUB_STEP_SUMMARY
 
       - name: Cleanup pre-releases
         uses: actions/github-script@v7.0.1
