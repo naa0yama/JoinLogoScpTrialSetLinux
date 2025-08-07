@@ -3,11 +3,17 @@ const childProcess = require('child_process');
 const { CHAPTEREXE_COMMAND, CHAPTEREXE_OUTPUT } = require("../settings");
 
 exports.exec = filename => {
-	return new Promise((resolve) => {
+	return new Promise((resolve, reject) => {
 		const args = ["-v", filename, "-s", "8", "-e", "4", "-o", CHAPTEREXE_OUTPUT];
 		const child = childProcess.spawn(CHAPTEREXE_COMMAND, args);
 		child.on('exit', (code) => {
-			resolve();
+			if (code === 0) {
+				resolve();
+			} else {
+				console.error(`${CHAPTEREXE_COMMAND} command failed with exit code: ${code}`);
+				reject(new Error(`${CHAPTEREXE_COMMAND} exited with code ${code}`));
+				process.exit(code);
+			}
 		});
 		child.stderr.on('data', (data) => {
 			//console.error("chapter_exe " + data);
@@ -17,7 +23,7 @@ exports.exec = filename => {
 					if (strbyline[i].startsWith('Creating')) {
 						console.error("AviSynth " + strbyline[i]);
 					} else {
-						console.error("chapter_exe " + strbyline[i]);
+						console.error(`${CHAPTEREXE_COMMAND} ` + strbyline[i]);
 					}
 				} else {
 					console.error(strbyline[i]);

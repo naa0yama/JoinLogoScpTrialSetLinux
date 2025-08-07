@@ -61,7 +61,7 @@ const selectLogo = channel => {
 };
 
 exports.exec = (param, channel, filename) => {
-	return new Promise((resolve) => {
+	return new Promise((resolve, reject) => {
 		const args = [filename, "-oa", LOGOFRAME_TXT_OUTPUT, "-o", LOGOFRAME_AVS_OUTPUT];
 		const logo = selectLogo(channel);
 		let logosub = null;
@@ -81,10 +81,16 @@ exports.exec = (param, channel, filename) => {
 
 		const child = childProcess.spawn(LOGOFRAME_COMMAND, args);
 		child.on('exit', (code) => {
-			resolve();
+			if (code === 0) {
+				resolve();
+			} else {
+				console.error(`${LOGOFRAME_COMMAND} command failed with exit code: ${code}`);
+				reject(new Error(`${LOGOFRAME_COMMAND} exited with code ${code}`));
+				process.exit(code);
+			}
 		});
 		child.stderr.on('data', (data) => {
-			console.error("logoframe " + data);
+			console.error(`${LOGOFRAME_COMMAND} ` + data);
 		});
 	})
 };

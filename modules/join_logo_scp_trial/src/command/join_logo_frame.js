@@ -11,7 +11,7 @@ const {
 } = require("../settings");
 
 exports.exec = param => {
-	return new Promise((resolve) => {
+	return new Promise((resolve, reject) => {
 		let args = ["-inlogo",
 			LOGOFRAME_TXT_OUTPUT,
 			"-inscp",
@@ -32,10 +32,16 @@ exports.exec = param => {
 
 		const child = childProcess.spawn(JLSCP_COMMAND, args);
 		child.on('exit', (code) => {
-			resolve();
+			if (code === 0) {
+				resolve();
+			} else {
+				console.error(`${JLSCP_COMMAND} command failed with exit code: ${code}`);
+				reject(new Error(`${JLSCP_COMMAND} exited with code ${code}`));
+				process.exit(code);
+			}
 		});
 		child.stderr.on('data', (data) => {
-			console.error("join_logo_frame " + data);
+			console.error(`${JLSCP_COMMAND} ` + data);
 		});
 	})
 };
