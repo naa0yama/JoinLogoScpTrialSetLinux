@@ -1,37 +1,37 @@
 {
-  "name": "join_logo_scp_trial",
-  "version": "1.0.0",
-  "description": "",
-  "main": "src/jlse.js",
-  "scripts": {
-    "start": "node src/jlse.js",
-    "lint": "eslint --fix ."
-  },
-  "bin": {
-    "jlse": "src/jlse.js"
-  },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/tobitti0/join_logo_scp_trial.git"
-  },
-  "author": "sogaani",
-  "license": "MIT",
-  "bugs": {
-    "url": "https://github.com/tobitti0/join_logo_scp_trial/issues"
-  },
-  "homepage": "https://github.com/tobitti0/join_logo_scp_trial",
-  "dependencies": {
-    "async": "3.2.6",
-    "csv": "6.3.11",
-    "fs-extra": "11.2.0",
-    "jaconv": "1.0.4",
-    "yargs": "17.7.2"
-  },
-  "devDependencies": {
-    "eslint": "9.29.0",
-    "eslint-config-google": "0.14.0",
-    "eslint-config-prettier": "9.1.0",
-    "eslint-plugin-prettier": "5.4.1",
-    "prettier": "3.5.3"
-  }
+	"name": "join_logo_scp_trial",
+	"version": "1.0.0",
+	"description": "",
+	"main": "src/jlse.js",
+	"scripts": {
+		"start": "node src/jlse.js",
+		"lint": "eslint --fix ."
+	},
+	"bin": {
+		"jlse": "src/jlse.js"
+	},
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/tobitti0/join_logo_scp_trial.git"
+	},
+	"author": "sogaani",
+	"license": "MIT",
+	"bugs": {
+		"url": "https://github.com/tobitti0/join_logo_scp_trial/issues"
+	},
+	"homepage": "https://github.com/tobitti0/join_logo_scp_trial",
+	"dependencies": {
+		"async": "3.2.6",
+		"csv": "6.3.11",
+		"fs-extra": "11.2.0",
+		"jaconv": "1.0.4",
+		"yargs": "17.7.2"
+	},
+	"devDependencies": {
+		"eslint": "9.29.0",
+		"eslint-config-google": "0.14.0",
+		"eslint-config-prettier": "9.1.0",
+		"eslint-plugin-prettier": "5.4.1",
+		"prettier": "3.5.3"
+	}
 }
