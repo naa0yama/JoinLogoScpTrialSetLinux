@@ -69,6 +69,19 @@ else
 	logger "##    - duration:  ${src_duration%.*}"
 	logger "## - destnation:   ${INPUT%.ts}.mp4"
 	logger "##    - duration:  ${dst_duration%.*}"
+	logger "## - versions:"
+	logger "$(jq -r '
+			{
+				"ffmpeg-jlstsl",
+				"liblsmash",
+				"liblsmash-url",
+				"liblsmashsource",
+				"liblsmashsource-url",
+				"libobuparse"
+			} as $data | ($data | keys | map(length) | max) as $maxlen |
+				$data | to_entries[] |
+				"##    \(.key):\(" " * ($maxlen - (.key | length) + 7))\(.value)"
+			' /opt/ffmpeg/versions.json)"
 	logger "##"
 	if (( ${dst_duration%.*} >= 208 && ${dst_duration%.*} <= 212 )); then
 		logger "## duration=${dst_duration%.*} Complete jlse is running normally." green
