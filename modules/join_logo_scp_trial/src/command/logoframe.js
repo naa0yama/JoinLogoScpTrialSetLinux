@@ -84,13 +84,13 @@ exports.exec = (param, channel, filename) => {
 			if (code === 0) {
 				resolve();
 			} else {
-				console.error(`${LOGOFRAME_COMMAND} command failed with exit code: ${code}`);
-				reject(new Error(`${LOGOFRAME_COMMAND} exited with code ${code}`));
-				process.exit(code);
+				console.error(`${LOGOFRAME_COMMAND.split('/').pop()} command failed with exit code: ${code}`);
+				reject(new Error(`${LOGOFRAME_COMMAND.split('/').pop()} exited with code ${code}`));
+				process.exit(code || 1);
 			}
 		});
 		child.stderr.on('data', (data) => {
-			console.error(`${LOGOFRAME_COMMAND} ` + data);
+			console.error(`${LOGOFRAME_COMMAND.split('/').pop()} ` + data);
 		});
 	})
 };

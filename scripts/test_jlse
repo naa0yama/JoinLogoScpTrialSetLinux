@@ -50,10 +50,12 @@ if [[ ! -f "${INPUT}" ]]; then
 	cp output/scene_06min/jtv_scene_06min.ts /source
 fi
 
-	jlse --input "${INPUT}" --encode \
-		--option ' -map 0:v -aspect 16:9 -c:v libx264 -preset veryfast -movflags faststart -f mp4 -map 0:a -c:a aac -bsf:a aac_adtstoasc' \;
+	if ! jlse --input "${INPUT}"; then
+		logger "## jlse failed with exit code $?. Stopping execution." red
+		exit 1
+	fi
 	src_duration=$(ffprobe -v error -show_entries format=duration -of csv=p=0 "${INPUT}")
-	dst_duration=$(ffprobe -v error -show_entries format=duration -of csv=p=0 "${INPUT%.ts}.mp4")
+	dst_duration=$(ffprobe -v error -show_entries format=duration -of csv=p=0 "/join_logo_scp_trial/result/$(basename ${INPUT} .ts)/in_cutcm_logo.avs")
 	set +x
 	logger "## ============================================================================="
 	logger "## Report test_jlse."

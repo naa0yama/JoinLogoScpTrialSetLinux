@@ -136,9 +136,14 @@ const main = async () => {
 		avsFile = createAvs(INPUT_AVS, TSDIVIDER_OUTPUT, -1);
 	}
 
-	await chapterexe(avsFile);
-	await logoframe(param, channel, avsFile);
-	await joinlogoframe(param);
+	try {
+		await chapterexe(avsFile);
+		await logoframe(param, channel, avsFile);
+		await joinlogoframe(param);
+	} catch (error) {
+		console.error("Error during processing:", error.message);
+		process.exit(1);
+	}
 
 	await createOutAvs(avsFile);
 	await createChapter(settings);
@@ -154,4 +159,7 @@ const main = async () => {
 	}
 };
 
-main();
+main().catch(error => {
+	console.error("Fatal error:", error.message);
+	process.exit(1);
+});

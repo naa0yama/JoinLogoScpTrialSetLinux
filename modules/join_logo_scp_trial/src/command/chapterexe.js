@@ -10,9 +10,9 @@ exports.exec = filename => {
 			if (code === 0) {
 				resolve();
 			} else {
-				console.error(`${CHAPTEREXE_COMMAND} command failed with exit code: ${code}`);
-				reject(new Error(`${CHAPTEREXE_COMMAND} exited with code ${code}`));
-				process.exit(code);
+				console.error(`${CHAPTEREXE_COMMAND.split('/').pop()} command failed with exit code: ${code}`);
+				reject(new Error(`${CHAPTEREXE_COMMAND.split('/').pop()} exited with code ${code}`));
+				process.exit(code || 1);
 			}
 		});
 		child.stderr.on('data', (data) => {
@@ -23,7 +23,7 @@ exports.exec = filename => {
 					if (strbyline[i].startsWith('Creating')) {
 						console.error("AviSynth " + strbyline[i]);
 					} else {
-						console.error(`${CHAPTEREXE_COMMAND} ` + strbyline[i]);
+						console.error(`${CHAPTEREXE_COMMAND.split('/').pop()} ` + strbyline[i]);
 					}
 				} else {
 					console.error(strbyline[i]);

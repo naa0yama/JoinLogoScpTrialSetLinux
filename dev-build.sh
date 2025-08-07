@@ -120,7 +120,7 @@ if [ ! -n "$(ls -A $PWD/modules/join_logo_scp_trial/logo)" ]; then
 fi
 
 set -x
-sudo rm -rfv modules/join_logo_scp_trial/result/*.* \
+sudo rm -rfv modules/join_logo_scp_trial/result/* \
 				$PWD/videos/source/*.{lwi,mp4} \
 				$PWD/videos/source:/source/*.{lwi,mp4}
 # Docker実行コマンドの決定

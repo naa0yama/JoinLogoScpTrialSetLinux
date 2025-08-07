@@ -35,13 +35,13 @@ exports.exec = param => {
 			if (code === 0) {
 				resolve();
 			} else {
-				console.error(`${JLSCP_COMMAND} command failed with exit code: ${code}`);
-				reject(new Error(`${JLSCP_COMMAND} exited with code ${code}`));
-				process.exit(code);
+				console.error(`${JLSCP_COMMAND.split('/').pop()} command failed with exit code: ${code}`);
+				reject(new Error(`${JLSCP_COMMAND.split('/').pop()} exited with code ${code}`));
+				process.exit(code || 1);
 			}
 		});
 		child.stderr.on('data', (data) => {
-			console.error(`${JLSCP_COMMAND} ` + data);
+			console.error(`${JLSCP_COMMAND.split('/').pop()} ` + data);
 		});
 	})
 };

@@ -840,7 +840,7 @@ ARG CFLAGS \
 ## Due to code agreements with l-smash and L-SMASH-Works,
 ## use with FFmpeg 7.0.0 or higher is unstable, so the version will be fixed.
 ## Ref: https://github.com/dwbuiten/obuparse/commits/master/
-ARG JLSTSL_OBUPARSE_VERSION=8acb5193a64e5c8281c9f22805f75f044f5931f7
+ARG JLSTSL_OBUPARSE_VERSION=478adcc872d5a8a19443e87910508e261a0a60ba
 
 ## FFmpeg
 ### Ref: https://github.com/FFmpeg/FFmpeg/tags
@@ -848,11 +848,11 @@ ARG JLSTSL_FFMPEG_VERSION=n6.1.2
 
 ## L-SMASH
 ARG JLSTSL_LSMASH_URL=https://github.com/vimeo/l-smash.git
-ARG JLSTSL_LSMASH_VERSION=30270d0d8b551b36b6f46c43bd3ffe997f13e157
+ARG JLSTSL_LSMASH_VERSION=62a93fb6a23b013d38f30fcb827c2abda69ee3d1
 
 ## L-SMASH-Works
 ARG JLSTSL_LSMASHWORKS_URL=https://github.com/HomeOfAviSynthPlusEvolution/L-SMASH-Works.git
-ARG JLSTSL_LSMASHWORKS_VERSION=1194.0.0.0
+ARG JLSTSL_LSMASHWORKS_VERSION=1170.0.0.0
 # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> WARNING <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
 COPY --from=build-library	"${PREFIX}"										"${PREFIX}"
