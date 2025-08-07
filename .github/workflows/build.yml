@@ -103,18 +103,17 @@ jobs:
           BUILD_EXIT_CODE=$?
 
           if [ $BUILD_EXIT_CODE -eq 0 ]; then
-            STATUS="✅ 成功"
+            STATUS="✅ Successed"
           else
-            STATUS="❌ 失敗"
+            STATUS="❌ Failed"
           fi
 
-          # Action Summary作成
+          # Action Summary Create
           {
-            echo "# ビルド実行結果"
-            echo "**ステータス:** $STATUS"
-            echo "**終了コード:** $BUILD_EXIT_CODE"
+            echo "# test_jlse Summary"
+            echo "**Status:** $STATUS"
+            echo "**Exit code:** $BUILD_EXIT_CODE"
             echo ""
-            echo "## 実行ログ"
             echo "\`\`\`bash"
             cat ./source/test_jlse.log
             echo "\`\`\`"
