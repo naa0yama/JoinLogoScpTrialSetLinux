@@ -850,6 +850,14 @@ ARG JLSTSL_LSMASH_VERSION=30270d0d8b551b36b6f46c43bd3ffe997f13e157
 ## L-SMASH-Works
 ARG JLSTSL_LSMASHWORKS_URL=https://github.com/HomeOfAviSynthPlusEvolution/L-SMASH-Works.git
 ARG JLSTSL_LSMASHWORKS_VERSION=1170.0.0.0
+# X 20250706	1266.0.0.0
+# X 20250630	1262.0.0.0
+# X 20250501	1252.0.0.0
+# X 20240408	1194.0.0.0
+# X 20240407	1192.0.0.0
+# X 20240402	1187.0.0.0
+# X 20240317	1183.0.0.0
+# O 20240304	1170.0.0.0
 # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> WARNING <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
 COPY --from=build-library	"${PREFIX}"										"${PREFIX}"
