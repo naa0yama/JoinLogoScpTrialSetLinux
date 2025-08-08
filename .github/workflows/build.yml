@@ -50,7 +50,7 @@ jobs:
       contents: write
       packages: write
     env:
-      TZ: 'Asia/Tokyo'
+      TZ: "Asia/Tokyo"
 
     steps:
       - name: Checkout from repository
@@ -89,11 +89,35 @@ jobs:
           context: .
           file: Dockerfile.${{ matrix.type }}
           push: ${{ contains( github.event.pull_request.merged, true ) || inputs.rebuild == 'true' || github.event_name == 'release' }}
+          load: true
           cache-from: type=gha
           cache-to: type=gha,mode=max
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           no-cache: ${{ inputs.no-cache == true }}
+
+      - name: jlse test
+        run: |
+          set -euxo pipefail
+          bash dev-build.sh --gh-action "${{ steps.meta.outputs.tags }}"
+          BUILD_EXIT_CODE=$?
+
+          if [ $BUILD_EXIT_CODE -eq 0 ]; then
+            STATUS="✅ Successed"
+          else
+            STATUS="❌ Failed"
+          fi
+
+          # Action Summary Create
+          {
+            echo "## test_jlse Summary"
+            echo "**Status:** $STATUS"
+            echo "**Exit code:** $BUILD_EXIT_CODE"
+            echo ""
+            echo "\`\`\`bash"
+            cat ./videos/source/test_jlse.log
+            echo "\`\`\`"
+          } >> $GITHUB_STEP_SUMMARY
 
       - name: Cleanup pre-releases
         uses: actions/github-script@v7.0.1
@@ -123,9 +147,10 @@ jobs:
             console.log('end run')
 
       - name: Generate new pre-release tag
+        if: ${{ github.event.pull_request.merged == true }}
         id: new_tag
         run: |
-          set -eu
+          set -euo pipefail
 
           TODAY=$(date +'%y.%m.%d')
           echo "Today's date: ${TODAY}"

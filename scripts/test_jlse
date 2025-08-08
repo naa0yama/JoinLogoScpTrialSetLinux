@@ -1,0 +1,96 @@
+#!/usr/bin/env bash
+set -euxo pipefail
+
+LOG_FILE="${LOG_FILE:-/tmp/test_jlse.log}"
+NO_COLOR="${NO_COLOR:-no}"
+INPUT="${INPUT:-/source/jtv_scene_06min.ts}"
+
+# Initialize log
+: > "$LOG_FILE"
+
+# Color Palette
+if [[ "${NO_COLOR}" == "no" ]]; then
+	declare -A COLORS=(
+		["red"]='\033[0;31m'	["green"]='\033[0;32m'	["yellow"]='\033[0;33m'
+		["blue"]='\033[0;34m'	["purple"]='\033[0;35m'	["cyan"]='\033[0;36m'
+		["white"]='\033[0;37m'	["bold"]='\033[1m'		["reset"]='\033[0m'
+	)
+else
+	declare -A COLORS=(
+		["red"]=''				["green"]=''			["yellow"]=''
+		["blue"]=''				["purple"]=''			["cyan"]=''
+		["white"]=''			["bold"]=''				["reset"]=''
+	)
+fi
+
+logger() {
+	local message="${1}"
+	local color="${2:-white}"
+
+	# Colored output to terminal
+	echo -e "${COLORS[$color]} ${message}${COLORS[reset]}"
+
+	# Output to log file without color
+	local log_dir=$(dirname "${LOG_FILE}")
+	[[ ! -d "${log_dir}" ]] && mkdir -p "${log_dir}"
+	echo "${message}" >> "${LOG_FILE}"
+}
+
+logger "Default test. ${INPUT}" yellow
+if [[ ! -f "${INPUT}" ]]; then
+	logger "Default testfile not found."
+	logger "Generate ts file."
+	JTV_TEMP=$(mktemp -q -d)
+	cd "${JTV_TEMP}"
+	curl -o jtv_gen.sh -sfSL https://raw.githubusercontent.com/naa0yama/jtv-gen/refs/heads/main/jtv_gen.sh
+	chmod +x jtv_gen.sh
+	./jtv_gen.sh -y
+
+	logger "Copy ${INPUT}"
+	cp output/scene_06min/jtv_scene_06min.ts /source
+fi
+
+
+set +x
+logger "## ============================================================================="
+logger "## Report test_jlse."
+logger "## - versions:"
+logger "$(jq -r '
+		{
+			"ffmpeg-jlstsl",
+			"libavisynth",
+			"liblsmash-url",
+			"liblsmash",
+			"liblsmashsource-url",
+			"liblsmashsource",
+			"libobuparse"
+		} as $data | ($data | keys | map(length) | max) as $maxlen |
+			$data | to_entries[] |
+			"##    \(.key):\(" " * ($maxlen - (.key | length) + 7))\(.value)"
+		' /opt/ffmpeg/versions.json)"
+logger "##"
+set -x
+
+set +x
+if ! jlse --input "${INPUT}"; then
+	logger "## jlse failed with exit code $?. Stopping execution." red
+	exit 1
+fi
+set +x
+
+src_duration=$(ffprobe -v error -show_entries format=duration -of csv=p=0 "${INPUT}")
+dst_duration=$(ffprobe -v error -show_entries format=duration -of csv=p=0 "/join_logo_scp_trial/result/$(basename ${INPUT} .ts)/in_cutcm_logo.avs")
+logger "## - source:       ${INPUT}"
+logger "##    - duration:  ${src_duration%.*}"
+logger "## - destnation:   ${INPUT%.ts}.mp4"
+logger "##    - duration:  ${dst_duration%.*}"
+logger "##"
+if (( ${dst_duration%.*} >= 208 && ${dst_duration%.*} <= 212 )); then
+	logger "## duration=${dst_duration%.*} Complete jlse is running normally." green
+else
+	logger "## duration=${dst_duration%.*}" red
+	logger "## The jlse cut range is higher or lower than expected (normal value is between 208-212 seconds)." red
+	exit 1
+fi
+logger "##     Complete test_jlse." green
+logger "##     logfile: ${LOG_FILE}" green
