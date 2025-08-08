@@ -110,7 +110,7 @@ jobs:
 
           # Action Summary Create
           {
-            echo "# test_jlse Summary"
+            echo "## test_jlse Summary"
             echo "**Status:** $STATUS"
             echo "**Exit code:** $BUILD_EXIT_CODE"
             echo ""
