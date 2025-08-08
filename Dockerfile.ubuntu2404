@@ -1025,7 +1025,7 @@ RUN echo "**** JLSTSL | L-SMASH-Works | build ****" && \
 	git fetch --depth 1 origin "${JLSTSL_LSMASHWORKS_VERSION}" && \
 	git checkout FETCH_HEAD && \
 	cd AviSynth && \
-	LDFLAGS="-Wl,-Bsymbolic" meson build && \
+	LDFLAGS="-Wl,-Bsymbolic" meson setup build && \
 	cd build && \
 	ninja -v && \
 	ninja install && \
