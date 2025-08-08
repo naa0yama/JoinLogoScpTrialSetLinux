@@ -85,7 +85,7 @@ logger "##    - duration:  ${src_duration%.*}"
 logger "## - destnation:   ${INPUT%.ts}.mp4"
 logger "##    - duration:  ${dst_duration%.*}"
 logger "##"
-if (( ${dst_duration%.*} >= 1435 && ${dst_duration%.*} <= 1445 )); then
+if (( ${dst_duration%.*} >= 208 && ${dst_duration%.*} <= 212 )); then
 	logger "## duration=${dst_duration%.*} Complete jlse is running normally." green
 else
 	logger "## duration=${dst_duration%.*}" red
