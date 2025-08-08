@@ -1,0 +1,1338 @@
+# syntax=docker/dockerfile:1
+#- -------------------------------------------------------------------------------------------------
+#- Global
+#-
+#	このファイルは Alpine Linux で一連の Binary を生成することを目的に実施したが
+#	L-SMASH の特性上、動的ライブラリーである必要があるため利用できなかった
+#	が、かなり時間をかけたためコードを残すことにした
+#
+ARG PYTHONUNBUFFERED=1
+ARG TZ=Asia/Tokyo
+
+# Runner settings
+ARG DEBIAN_FRONTEND=noninteractive
+ARG DEBCONF_NOWARNINGS=yes
+
+# NodeJs version
+ARG NODE_ENV="production"
+ARG NODE_VERSION=18
+
+# AviSynthPlus
+## renovate: datasource=github-releases packageName=AviSynth/AviSynthPlus versioning=semver
+ARG AVISYNTHPLUS_VERSION=v3.7.3
+## renovate: datasource=git-refs packageName=https://github.com/Mr-Ojii/l-smash.git branch=master versioning=git
+ARG LSMASH_VERSION=315b4747d759e336ef30b18e93f2e676810e5a73
+## renovate: datasource=git-refs packageName=https://github.com/Mr-Ojii/L-SMASH-Works.git branch=master versioning=git
+ARG LSMASHWORKS_VERSION=fa20c138f7dfe6c28115529c5723ffd1c45c340b
+## renovate: datasource=git-refs packageName=https://github.com/dwbuiten/obuparse.git branch=master versioning=git
+ARG OBUPARSE_VERSION=918524abdc19b6582d853c03373d8e2e0b9f11ee
+
+# Intel
+## renovate: datasource=github-tags packageName=intel/gmmlib versioning=semver
+ARG INTEL_GMMLIB_VERSION=intel-gmmlib-22.6.0
+## renovate: datasource=github-releases packageName=intel/media-driver
+ARG INTEL_MEDIA_DRIVER_VERSION=intel-media-24.3.4
+## renovate: datasource=github-releases packageName=intel/libva versioning=semver
+ARG INTEL_LIBVA_VERSION=2.22.0
+## renovate: datasource=github-tags packageName=intel/libvpl versioning=git
+ARG INTEL_LIBVPL_VERSION=v2.14.0
+## renovate: datasource=github-releases packageName=intel/vpl-gpu-rt
+ARG INTEL_VPL_GPU_RT_VERSION=intel-onevpl-24.3.4
+
+# FFmpeg
+## renovate: datasource=github-tags packageName=FFmpeg/FFmpeg versioning=semver
+ARG FFMPEG_VERSION=n7.1
+## renovate: datasource=git-tags packageName=https://code.videolan.org/videolan/dav1d.git versioning=semver
+ARG AV1_DAV1D_VERSION=1.5.1
+## renovate: datasource=git-tags packageName=https://gitlab.com/AOMediaCodec/SVT-AV1.git versioning=semver
+ARG AV1_SVTAV1_VERSION=v2.3.0
+## renovate: datasource=github-tags packageName=webmproject/libvpx versioning=semver
+ARG LIBVPX_VERSION=v1.15.0
+## renovate: datasource=github-releases packageName=xiph/opus versioning=semver
+ARG OPUS_VERSION=v1.5.2
+## renovate: datasource=github-releases packageName=Netflix/vmaf versioning=semver
+ARG VMAF_VERSION=v3.0.0
+## renovate: datasource=git-refs packageName=https://code.videolan.org/videolan/x264.git branch=stable versioning=git
+ARG X264_VERSION=31e19f92f00c7003fa115047ce50978bc98c3a0d
+## renovate: datasource=git-refs packageName=https://bitbucket.org/multicoreware/x265_git.git versioning=semver
+ARG X265_VERSION=4.0
+
+# Additional dependencies built from source
+## renovate: datasource=github-tags packageName=nkoriyama/aribb24 versioning=semver
+ARG ARIBB24_VERSION=v1.0.3
+## renovate: datasource=github-tags packageName=libass/libass versioning=semver
+ARG LIBASS_VERSION=0.17.3
+
+# Ref: https://github.com/wader/static-ffmpeg/blob/master/Dockerfile
+# -O3 makes sure we compile with optimization. setting CFLAGS/CXXFLAGS seems to override
+# default automake cflags.
+# -static-libgcc is needed to make gcc not include gcc_s as "as-needed" shared library which
+# cmake will include as a implicit library.
+# other options to get hardened build (same as ffmpeg hardened)
+ARG CFLAGS="-O3 -static-libgcc -fno-strict-overflow -fstack-protector-all -fPIC -ffunction-sections -fdata-sections"
+ARG CXXFLAGS="-O3 -static-libgcc -fno-strict-overflow -fstack-protector-all -fPIC -ffunction-sections -fdata-sections"
+ARG LDFLAGS="-Wl,-z,relro,-z,now -Wl,--gc-sections -Wl,--strip-all -s"
+
+# retry dns and some http codes that might be transient errors
+ARG WGET_OPTS="--retry-on-host-error --retry-on-http-error=429,500,502,503"
+
+
+#- -------------------------------------------------------------------------------------------------
+#- Base
+#-
+FROM alpine:3.19 AS base
+ARG PYTHONUNBUFFERED
+ARG NODE_ENV
+ENV NODE_ENV=${NODE_ENV}
+ARG NODE_VERSION
+ARG TZ
+ENV TZ=${TZ}
+
+SHELL ["/bin/sh", "-c"]
+
+RUN echo "**** Dependencies ****" && \
+	set -euxo pipefail && \
+	apk add --no-cache \
+	binutils \
+	ca-certificates \
+	curl \
+	jq \
+	less \
+	tzdata \
+	wget \
+	&& \
+	\
+	# Set timezone
+	cp "/usr/share/zoneinfo/${TZ}" /etc/localtime && \
+	echo "${TZ}" > /etc/timezone
+
+
+#- -------------------------------------------------------------------------------------------------
+#- Build Base
+#-
+FROM base AS build-base
+ARG PYTHONUNBUFFERED
+ARG WGET_OPTS
+
+ARG PREFIX="/opt/ffmpeg"
+# Additional amount only
+ENV CPPFLAGS="-I${PREFIX}/include"
+ENV LD_LIBRARY_PATH="${PREFIX}/lib"
+ENV PKG_CONFIG_PATH="${PREFIX}/lib/pkgconfig"
+ENV PATH="${PREFIX}/bin:${PATH}"
+
+RUN echo "**** Create directory ****" && \
+	set -euxo pipefail && \
+	mkdir -p "${PREFIX}" "${PREFIX}/bin" "${PREFIX}/include" \
+	"${PREFIX}/lib" "${PREFIX}/lib/pkgconfig" "${PREFIX}/src"
+
+RUN echo "**** Build Dependencies ****" && \
+	set -euxo pipefail && \
+	apk add --no-cache \
+	autoconf \
+	automake \
+	bash \
+	build-base \
+	cmake \
+	diffutils \
+	git \
+	libtool \
+	linux-headers \
+	meson \
+	nasm \
+	ninja \
+	pkgconf-dev \
+	texinfo \
+	xxd \
+	yasm
+
+RUN echo "**** Build Dependencies | FFmpeg ****" && \
+	set -euxo pipefail && \
+	apk add --no-cache \
+	glib-dev glib-static \
+	lame-dev \
+	libdrm-dev \
+	libpng-dev libpng-static \
+	zlib-dev zlib-static
+
+RUN <<EOF
+echo "**** Practical check_static function ****"
+set -euxo pipefail
+
+cat << '_DOC_' > ${PREFIX}/bin/check_static
+#!/usr/bin/env bash
+set -euo pipefail
+
+check_static_binary() {
+    local file_path="${1}"
+    local check_mode="${2:-strict}"  # strict/permissive
+
+    if [[ ! -f "${file_path}" ]]; then
+        echo "check_static: Error: File not found: ${file_path}" >&2
+        exit 1
+    fi
+
+    local file_info=$(file "${file_path}")
+    local filename=$(basename "${file_path}")
+    echo "check_static: Checking: ${filename} (mode: ${check_mode})"
+
+    # .a File (static library)
+    if [[ "${file_path##*.}" == "a" ]] || echo "${file_info}" | grep -q "ar archive"; then
+        echo "check_static: ✓ Static library: ${filename}"
+        return 0
+    fi
+
+    # .so Files (shared libraries)
+    if [[ "${file_path##*.}" == "so" ]] || echo "${file_path}" | grep -q "\.so\." || echo "${file_info}" | grep -q "shared object"; then
+        if [ "${check_mode}" = "permissive" ]; then
+            echo "check_static: ✓ Shared library (permissive mode): ${filename}"
+            return 0
+        else
+            echo "check_static: ✗ Error: Dynamic library detected: ${filename}" >&2
+            ldd "${file_path}" 2>&1 | sed 's/^/  /' >&2 || true
+            exit 1
+        fi
+    fi
+
+    # Executable files
+    if echo "${file_info}" | grep -q "executable"; then
+        local ldd_output=$(ldd "${file_path}" 2>&1)
+        if echo "${ldd_output}" | grep -q "not a dynamic executable" || echo "${file_info}" | grep -q "statically linked"; then
+            echo "check_static: ✓ Static executable: ${filename}"
+        else
+            echo "check_static: ✗ Error: Dynamic executable detected: ${filename}" >&2
+            echo "check_static: Dependencies:" >&2
+            echo "${ldd_output}" | sed 's/^/  /' >&2
+            exit 1
+        fi
+        return 0
+    fi
+
+    echo "check_static: ✓ Other file type: ${filename}"
+    return 0
+}
+
+# Execute with arguments
+if [[ ${#} -gt 0 ]]; then
+    check_static_binary "${@}"
+fi
+_DOC_
+
+chmod +x ${PREFIX}/bin/check_static
+EOF
+
+#- -------------------------------------------------------------------------------------------------
+#- Build Intel QSV
+#-
+FROM build-base AS build-intel-qsv
+ARG PYTHONUNBUFFERED
+ARG WGET_OPTS
+
+# make options
+ARG CFLAGS \
+	CXXFLAGS \
+	LDFLAGS
+
+# Intel
+ARG INTEL_GMMLIB_VERSION \
+	INTEL_MEDIA_DRIVER_VERSION \
+	INTEL_LIBVA_VERSION \
+	INTEL_LIBVPL_VERSION \
+	INTEL_VPL_GPU_RT_VERSION
+
+# Copy tools from build-base stage
+COPY --from=build-base "${PREFIX}" "${PREFIX}"
+
+RUN echo "**** Intel QSV | libva ****" && \
+	set -euxo pipefail && \
+	cd "${PREFIX}" && \
+	git clone --depth 1 -b "${INTEL_LIBVA_VERSION}" https://github.com/intel/libva.git && \
+	cd libva && \
+	./autogen.sh \
+	--disable-shared \
+	--enable-pic \
+	--enable-static \
+	--libdir="${PREFIX}/lib" \
+	--prefix="${PREFIX}" \
+	&& \
+	make -j$(nproc) && \
+	make install && \
+	make clean && \
+	\
+	pkg-config --exists libva && \
+	check_static "${PREFIX}/lib/libva.a" permissive && \
+	pkg-config --exists libva-drm && \
+	check_static "${PREFIX}/lib/libva-drm.a" permissive && \
+	cd "${PREFIX}" && \
+	mv -v libva "${PREFIX}/src"
+
+RUN echo "**** Intel QSV | gmmlib ****" && \
+	set -euxo pipefail && \
+	cd "${PREFIX}" && \
+	git clone --depth 1 -b "${INTEL_GMMLIB_VERSION}" https://github.com/intel/gmmlib.git && \
+	cd gmmlib && \
+	mkdir -p build && \
+	cd build && \
+	cmake -G "Unix Makefiles" \
+	-DBUILD_SHARED_LIBS=OFF \
+	-DBUILD_STATIC_LIBS=ON \
+	-DCMAKE_BUILD_TYPE=Release \
+	-DCMAKE_C_FLAGS="${CFLAGS}" \
+	-DCMAKE_CXX_FLAGS="${CXXFLAGS}" \
+	-DCMAKE_INSTALL_LIBDIR="${PREFIX}/lib" \
+	-DCMAKE_INSTALL_PREFIX="${PREFIX}" \
+	-DCMAKE_POSITION_INDEPENDENT_CODE=ON \
+	.. && \
+	make -j$(nproc) && \
+	make install && \
+	make clean && \
+	\
+	pkg-config --exists igdgmm && \
+	check_static "${PREFIX}/lib/libigdgmm.so" permissive && \
+	cd "${PREFIX}" && \
+	mv -v gmmlib "${PREFIX}/src"
+
+# Ref: https://github.com/intel/media-driver/wiki/Alchemist(DG2)-and-ATSM-Setup
+# ENABLE_PRODUCTION_KMD=ON
+#   - DG1/SG1（Intel Iris Xe MAX）
+#   - DG2/Alchemist（Intel Arc A310, A380, A750, A770）
+#   - ATSM（Intel Data Center GPU）
+RUN echo "**** Intel QSV | media-driver ****" && \
+	set -euxo pipefail && \
+	cd "${PREFIX}" && \
+	git clone --depth 1 -b "${INTEL_MEDIA_DRIVER_VERSION}" https://github.com/intel/media-driver.git && \
+	cd media-driver && \
+	mkdir -p build && \
+	cd build && \
+	cmake -G "Unix Makefiles" \
+	-DBUILD_SHARED_LIBS=OFF \
+	-DBUILD_STATIC_LIBS=ON \
+	-DCMAKE_BUILD_TYPE=Release \
+	-DCMAKE_C_FLAGS="${CFLAGS}" \
+	-DCMAKE_CXX_FLAGS="${CXXFLAGS}" \
+	-DCMAKE_INSTALL_LIBDIR="${PREFIX}/lib" \
+	-DCMAKE_INSTALL_PREFIX="${PREFIX}" \
+	-DCMAKE_POSITION_INDEPENDENT_CODE=ON \
+	-DENABLE_PRODUCTION_KMD=ON \
+	-DLIBVA_DRIVERS_PATH="${PREFIX}/lib/dri" \
+	.. && \
+	make -j$(nproc) && \
+	make install && \
+	make clean && \
+	\
+	pkg-config --exists igfxcmrt && \
+	check_static "${PREFIX}/lib/libigfxcmrt.so" permissive && \
+	cd "${PREFIX}" && \
+	mv -v media-driver "${PREFIX}/src"
+
+RUN echo "**** Intel QSV | libvpl ****" && \
+	set -euxo pipefail && \
+	cd "${PREFIX}" && \
+	git clone --depth 1 -b "${INTEL_LIBVPL_VERSION}" https://github.com/intel/libvpl.git && \
+	cd libvpl && \
+	cmake -B build \
+	-G"Unix Makefiles" \
+	-DBUILD_SHARED_LIBS=OFF \
+	-DBUILD_STATIC_LIBS=ON \
+	-DBUILD_TESTS=OFF \
+	-DCMAKE_BUILD_TYPE=Release \
+	-DCMAKE_INSTALL_LIBDIR="${PREFIX}/lib" \
+	-DCMAKE_INSTALL_PREFIX="${PREFIX}" \
+	-DCMAKE_POSITION_INDEPENDENT_CODE=ON \
+	-DCMAKE_VERBOSE_MAKEFILE=ON \
+	-DENABLE_WARNING_AS_ERROR=ON \
+	&& \
+	cmake --build build -j$(nproc) && \
+	cmake --install build && \
+	cmake --build build --target clean && \
+	\
+	pkg-config --exists vpl && \
+	check_static "${PREFIX}/lib/libvpl.a" permissive && \
+	cd "${PREFIX}" && \
+	mv -v libvpl "${PREFIX}/src"
+
+RUN echo "**** Intel QSV | VPL Runtime ****" && \
+	set -euxo pipefail && \
+	cd "${PREFIX}" && \
+	git clone --depth 1 -b "${INTEL_VPL_GPU_RT_VERSION}" https://github.com/intel/vpl-gpu-rt.git && \
+	cd vpl-gpu-rt && \
+	mkdir -p build && cd build && \
+	cmake -G "Unix Makefiles" \
+	-DBUILD_SHARED_LIBS=OFF \
+	-DBUILD_STATIC_LIBS=ON \
+	-DCMAKE_BUILD_TYPE=Release \
+	-DCMAKE_INSTALL_LIBDIR="${PREFIX}/lib" \
+	-DCMAKE_INSTALL_PREFIX="${PREFIX}" \
+	-DCMAKE_POSITION_INDEPENDENT_CODE=ON \
+	.. && \
+	make -j$(nproc) && \
+	make install && \
+	make clean && \
+	\
+	pkg-config --exists libmfx-gen && \
+	check_static "${PREFIX}/lib/libmfx-gen.so" permissive && \
+	cd "${PREFIX}" && \
+	mv -v vpl-gpu-rt "${PREFIX}/src"
+
+
+#- -------------------------------------------------------------------------------------------------
+#- Build ffmpeg
+#-
+FROM build-base AS build-ffmpeg
+ARG PYTHONUNBUFFERED
+ARG WGET_OPTS
+
+# make options
+ARG CFLAGS \
+	CXXFLAGS \
+	LDFLAGS
+
+# Intel QSV
+ARG INTEL_GMMLIB_VERSION \
+	INTEL_MEDIA_DRIVER_VERSION \
+	INTEL_LIBVA_VERSION \
+	INTEL_LIBVPL_VERSION \
+	INTEL_VPL_GPU_RT_VERSION
+
+# AviSynthPlus
+ARG AVISYNTHPLUS_VERSION \
+	LSMASH_VERSION \
+	LSMASHWORKS_VERSION
+
+# Additional dependencies built from source
+ARG ARIBB24_VERSION \
+	LIBASS_VERSION
+
+# FFmpeg
+ARG FFMPEG_VERSION \
+	FFMPEG_URL="https://ffmpeg.org/releases/ffmpeg-${FFMPEG_VERSION}.tar.bz2" \
+	AV1_DAV1D_VERSION \
+	AV1_SVTAV1_VERSION \
+	LIBVPX_VERSION \
+	OPUS_VERSION \
+	VMAF_VERSION \
+	X264_VERSION \
+	X265_VERSION \
+	OBUPARSE_VERSION
+
+# Copy Intel QSV libraries from build-intel-qsv stage
+COPY --from=build-intel-qsv /opt/ffmpeg /opt/ffmpeg
+
+RUN echo "**** libvmaf ****" && \
+	set -euxo pipefail && \
+	cd "${PREFIX}" && \
+	git clone --depth 1 -b "${VMAF_VERSION}" https://github.com/Netflix/vmaf.git && \
+	cd vmaf/libvmaf && \
+	meson setup build \
+	--buildtype=release \
+	--default-library=static \
+	--prefix="${PREFIX}" \
+	--libdir="${PREFIX}/lib" \
+	-Dbuilt_in_models=true \
+	-Denable_avx512=true \
+	-Denable_docs=false \
+	-Denable_float=true \
+	&& \
+	ninja -vC build -j$(nproc) && \
+	ninja -vC build install && \
+	ninja -vC build -t clean && \
+	sed -i 's/-lvmaf /-lvmaf -lstdc++ /' "${PREFIX}/lib/pkgconfig/libvmaf.pc" && \
+	\
+	pkg-config --exists libvmaf && \
+	check_static "${PREFIX}/lib/libvmaf.a" permissive && \
+	cd "${PREFIX}" && \
+	mv -v vmaf* "${PREFIX}/src"
+
+RUN echo "**** dav1d ****" && \
+	set -euxo pipefail && \
+	cd "${PREFIX}" && \
+	git clone --depth 1 -b "${AV1_DAV1D_VERSION}" https://code.videolan.org/videolan/dav1d.git && \
+	cd dav1d && \
+	meson setup build \
+	--buildtype=release \
+	--default-library=static \
+	--prefix="${PREFIX}" \
+	--libdir="${PREFIX}/lib" \
+	-Denable_tests=false \
+	-Denable_tools=false \
+	&& \
+	ninja -vC build -j$(nproc) && \
+	ninja -vC build install && \
+	ninja -vC build -t clean && \
+	\
+	pkg-config --exists dav1d && \
+	check_static "${PREFIX}/lib/libdav1d.a" permissive && \
+	cd "${PREFIX}" && \
+	mv -v dav1d "${PREFIX}/src"
+
+RUN echo "**** SVT-AV1 ****" && \
+	set -euxo pipefail && \
+	cd "${PREFIX}" && \
+	git clone --depth 1 -b "${AV1_SVTAV1_VERSION}" https://gitlab.com/AOMediaCodec/SVT-AV1.git && \
+	mkdir SVT-AV1/build && \
+	cd SVT-AV1/build && \
+	cmake -G "Unix Makefiles" \
+	-DBUILD_DEC=OFF \
+	-DBUILD_SHARED_LIBS=OFF \
+	-DBUILD_STATIC_LIBS=ON \
+	-DCMAKE_BUILD_TYPE=Release \
+	-DCMAKE_INSTALL_PREFIX="${PREFIX}" \
+	-DCMAKE_POSITION_INDEPENDENT_CODE=ON \
+	.. && \
+	make -j$(nproc) && \
+	make install && \
+	make clean && \
+	\
+	pkg-config --exists SvtAv1Enc && \
+	check_static "${PREFIX}/lib/libSvtAv1Enc.a" permissive && \
+	cd "${PREFIX}" && \
+	mv -v SVT-AV1 "${PREFIX}/src"
+
+## libvpx
+RUN echo "**** libvpx ****" && \
+	set -euxo pipefail && \
+	cd "${PREFIX}" && \
+	git clone --depth 1 -b "${LIBVPX_VERSION}" https://github.com/webmproject/libvpx.git && \
+	cd libvpx && \
+	./configure \
+	--prefix="${PREFIX}" \
+	--libdir="${PREFIX}/lib" \
+	--disable-debug \
+	--disable-docs \
+	--disable-examples \
+	--disable-install-bins \
+	--enable-static \
+	--enable-small \
+	--disable-unit-tests \
+	--enable-pic \
+	--disable-shared \
+	--enable-vp8 \
+	--enable-vp9 \
+	--enable-vp9-highbitdepth \
+	&& \
+	make -j$(nproc) && \
+	make install && \
+	make clean && \
+	\
+	pkg-config --exists vpx && \
+	check_static "${PREFIX}/lib/libvpx.a" permissive && \
+	cd "${PREFIX}" && \
+	mv -v libvpx "${PREFIX}/src"
+
+## opus
+RUN echo "**** opus ****" && \
+	set -euxo pipefail && \
+	cd "${PREFIX}" && \
+	git clone --depth 1 -b "${OPUS_VERSION}" https://github.com/xiph/opus.git && \
+	cd opus && \
+	autoreconf -fiv && \
+	./configure \
+	--prefix="${PREFIX}" \
+	--libdir="${PREFIX}/lib" \
+	--enable-static \
+	--disable-shared \
+	--with-pic \
+	&& \
+	make -j$(nproc) && \
+	make install && \
+	make clean && \
+	\
+	pkg-config --exists opus && \
+	check_static "${PREFIX}/lib/libopus.a" permissive && \
+	cd "${PREFIX}" && \
+	mv -v opus "${PREFIX}/src"
+
+## x264
+RUN echo "**** x264 ****" && \
+	set -euxo pipefail && \
+	cd "${PREFIX}" && \
+	mkdir -p x264 && \
+	cd x264 && \
+	git init && \
+	git remote add origin https://code.videolan.org/videolan/x264.git && \
+	git fetch --depth 1 origin "${X264_VERSION}" && \
+	git checkout FETCH_HEAD && \
+	./configure \
+	--prefix="${PREFIX}" \
+	--libdir="${PREFIX}/lib" \
+	--disable-cli \
+	--enable-static \
+	--enable-pic \
+	--disable-shared \
+	&& \
+	make -j$(nproc) && \
+	make install && \
+	make clean && \
+	\
+	pkg-config --exists x264 && \
+	check_static "${PREFIX}/lib/libx264.a" permissive && \
+	cd "${PREFIX}" && \
+	mv -v x264 "${PREFIX}/src"
+
+## x265
+RUN echo "**** x265 ****" && \
+	set -euxo pipefail && \
+	cd "${PREFIX}" && \
+	git clone --depth 1 -b "${X265_VERSION}" https://bitbucket.org/multicoreware/x265_git.git x265 && \
+	cd x265/build/linux && \
+	sed -i '/^[[:space:]]*cmake / s/$/ -G "Unix Makefiles" ${CMAKEFLAGS}/' ./multilib.sh && \
+	sed -i 's/ -DENABLE_SHARED=OFF//g' ./multilib.sh && \
+	MAKEFLAGS="-j$(nproc)" \
+	CMAKEFLAGS="-DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=${PREFIX} \
+	-DCMAKE_POSITION_INDEPENDENT_CODE:BOOL=ON -DCMAKE_VERBOSE_MAKEFILE:BOOL=ON \
+	-DENABLE_AGGRESSIVE_CHECKS:BOOL=ON -DENABLE_NASM:BOOL=ON \
+	-DENABLE_SHARED:BOOL=OFF -DSTATIC_LIB:BOOL=ON" \
+	./multilib.sh && \
+	# The following make install might be redundant if multilib.sh already handles it with new CMAKEFLAGS
+	# However, keeping it for now to ensure the original build flow for 8bit is attempted.
+	make -C 8bit -j$(nproc) install && \
+	\
+	pkg-config --exists x265 && \
+	check_static "${PREFIX}/lib/libx265.a" permissive && \
+	cd "${PREFIX}" && \
+	mv -v x265 "${PREFIX}/src"
+
+## aribb24
+RUN echo "**** aribb24 ****" && \
+	set -euxo pipefail && \
+	cd "${PREFIX}" && \
+	git clone --depth 1 -b "${ARIBB24_VERSION}" https://github.com/nkoriyama/aribb24.git && \
+	cd aribb24 && \
+	autoreconf -fiv && \
+	./configure \
+	--prefix="${PREFIX}" \
+	--libdir="${PREFIX}/lib" \
+	--enable-static \
+	--disable-shared \
+	&& \
+	make -j$(nproc) && \
+	make install && \
+	make clean && \
+	\
+	pkg-config --exists aribb24 && \
+	check_static "${PREFIX}/lib/libaribb24.a" permissive && \
+	cd "${PREFIX}" && \
+	mv -v aribb24 "${PREFIX}/src"
+
+RUN echo "**** libass | Build Dependencies ****" && \
+	set -euxo pipefail && \
+	apk add --no-cache \
+	brotli-dev brotli-static \
+	bzip2-dev bzip2-static \
+	expat-dev expat-static \
+	fontconfig-dev fontconfig-static \
+	freetype freetype-dev freetype-static \
+	fribidi-dev fribidi-static \
+	gettext-dev \
+	graphite2-dev graphite2-static \
+	harfbuzz-dev harfbuzz-static \
+	libuuid
+
+## libass
+RUN echo "**** libass ****" && \
+	set -euxo pipefail && \
+	cd "${PREFIX}" && \
+	git clone --depth 1 -b "${LIBASS_VERSION}" https://github.com/libass/libass.git && \
+	cd libass && \
+	autoreconf -fiv && \
+	./configure \
+	--prefix="${PREFIX}" \
+	--libdir="${PREFIX}/lib" \
+	--includedir="${PREFIX}/include" \
+	--enable-static \
+	--disable-shared \
+	&& \
+	make -j$(nproc) && \
+	make install && \
+	make clean && \
+	\
+	pkg-config --exists libass && \
+	check_static "${PREFIX}/lib/libass.a" permissive && \
+	cd "${PREFIX}" && \
+	mv -v libass "${PREFIX}/src"
+
+## AviSynth+
+RUN echo "**** AviSynth+ | download ****" && \
+	set -euxo pipefail && \
+	cd "${PREFIX}" && \
+	git clone --depth 1 -b "${AVISYNTHPLUS_VERSION}" https://github.com/AviSynth/AviSynthPlus.git
+
+
+# RUN <<EOF
+# echo "**** AviSynth+ | create patch ****"
+# set -euxo pipefail
+#
+# cat <<- _DOC_ > ${PREFIX}/AviSynthPlus/static_plugins.patch
+# --- a/plugins/ConvertStacked/CMakeLists.txt
+# +++ b/plugins/ConvertStacked/CMakeLists.txt
+# @@ -12,1 +12,1 @@
+# -add_library(\${ProjectName} SHARED \${SourceFiles})
+# +add_library(\${ProjectName} STATIC \${SourceFiles})
+# --- a/plugins/Shibatch/CMakeLists.txt
+# +++ b/plugins/Shibatch/CMakeLists.txt
+# @@ -19,1 +19,1 @@
+# -add_library(\${ProjectName} SHARED \${SourceFiles})
+# +add_library(\${ProjectName} STATIC \${SourceFiles})
+# --- a/plugins/TimeStretch/CMakeLists.txt
+# +++ b/plugins/TimeStretch/CMakeLists.txt
+# @@ -12,1 +12,1 @@
+# -add_library(\${ProjectName} SHARED \${SourceFiles})
+# +add_library(\${ProjectName} STATIC \${SourceFiles})
+# _DOC_
+# EOF
+
+RUN echo "**** AviSynth+ | build ****" && \
+	set -euxo pipefail && \
+	cd "${PREFIX}/AviSynthPlus" && \
+	# patch -p1 < static_plugins.patch && \
+	\
+	mkdir avisynth-build && \
+	cd avisynth-build && \
+	cmake ../ -G Ninja \
+	# -DBUILD_DEC=OFF \
+	# -DBUILD_SHARED_LIBS=OFF \
+	-DCMAKE_BUILD_TYPE=Release \
+	-DCMAKE_INSTALL_PREFIX="${PREFIX}" \
+	&& \
+	ninja -v -j$(nproc) && \
+	ninja -v install && \
+	ninja -v -t clean && \
+	\
+	pkg-config --exists avisynth && \
+	# check_static "${PREFIX}/lib/libavisynth.a" permissive && \
+	check_static "${PREFIX}/lib/libavisynth.so" permissive && \
+	cd "${PREFIX}" && \
+	mv -v AviSynthPlus "${PREFIX}/src"
+
+## FFmpeg
+# ldflags stack-size=2097152 is to increase default stack size from 128KB (musl default) to something
+# more similar to glibc (2MB). This fixing segfault with libsvtav1 as they seems to pass
+# large things on the stack.
+#
+# ldfalgs -Wl,--allow-multiple-definition is a workaround for linking with multiple rust staticlib to
+# not cause collision in toolchain symbols, see comment in checkdupsym script for details.
+# Ref: https://github.com/wader/static-ffmpeg/blob/master/Dockerfile
+RUN echo "**** ffmpeg ****" && \
+	# force 'set -eux'
+	set -eux && \
+	cd "${PREFIX}" && \
+	git clone --depth 1 -b "${FFMPEG_VERSION}" https://github.com/FFmpeg/FFmpeg.git ffmpeg && \
+	set +u && \
+	echo "=== Build Environment ===" && \
+	echo "= Compile settings" && \
+	echo "LD_LIBRARY_PATH: ${LD_LIBRARY_PATH}" && \
+	echo "PKG_CONFIG_PATH: ${PKG_CONFIG_PATH}" && \
+	echo "" && \
+	echo "= Build systems" && \
+	echo "CFLAGS:          ${CFLAGS}" && \
+	echo "CPPFLAGS:        ${CPPFLAGS}" && \
+	echo "CXXFLAGS:        ${CXXFLAGS}" && \
+	echo "LDFLAGS:         ${LDFLAGS}" && \
+	echo "=========================" && \
+	set -u && \
+	\
+	cd ffmpeg && \
+	./configure \
+	# encoder & decoder
+	--enable-avisynth \
+	--enable-libaribb24 \
+	--enable-libass \
+	--enable-libdav1d \
+	--enable-libfreetype \
+	--enable-libmp3lame \
+	--enable-libopus \
+	--enable-libsvtav1 \
+	--enable-libvmaf \
+	--enable-libvpl \
+	--enable-libvpx \
+	--enable-libx264 \
+	--enable-libx265 \
+	--enable-vaapi \
+	\
+	# License
+	--enable-gpl \
+	# --enable-nonfree \  # https://www.ffmpeg.org/legal.html
+	--enable-version3 \
+	\
+	# small binary & static build
+	--disable-debug \
+	--disable-doc \
+	--disable-ffplay \
+	--disable-shared \
+	--enable-small \
+	--enable-static \
+	--enable-stripping \
+	--prefix="${PREFIX}" \
+	--pkg-config-flags="--static" \
+	--extra-cflags="-static -fopenmp" \
+	--extra-ldflags="-static -fopenmp -Wl,--allow-multiple-definition -Wl,-z,stack-size=2097152" \
+	--toolchain=hardened \
+	2>&1 | tee ffmpeg_configure.log && \
+	tail -n 20 ffbuild/config.log && \
+	\
+	make -j$(nproc) && \
+	make install && \
+	make clean && \
+	\
+	pkg-config --exists libavutil && \
+	check_static "${PREFIX}/lib/libavutil.a" strict && \
+	pkg-config --exists libavcodec && \
+	check_static "${PREFIX}/lib/libavcodec.a" strict && \
+	pkg-config --exists libswresample && \
+	check_static "${PREFIX}/lib/libswresample.a" strict && \
+	pkg-config --exists libavformat && \
+	check_static "${PREFIX}/lib/libavformat.a" strict && \
+	pkg-config --exists libavfilter && \
+	check_static "${PREFIX}/lib/libavfilter.a" strict && \
+	pkg-config --exists libavdevice && \
+	check_static "${PREFIX}/lib/libavdevice.a" strict && \
+	pkg-config --exists libswscale && \
+	check_static "${PREFIX}/lib/libswscale.a" strict && \
+	cd "${PREFIX}" && \
+	mv -v ffmpeg* "${PREFIX}/src"
+
+## obuparse
+RUN echo "**** obuparse | build ****" && \
+	set -euxo pipefail && \
+	cd "${PREFIX}" && \
+	mkdir -p obuparse && \
+	cd obuparse && \
+	git init && \
+	git remote add origin https://github.com/dwbuiten/obuparse.git && \
+	git fetch --depth 1 origin "${OBUPARSE_VERSION}" && \
+	git checkout FETCH_HEAD && \
+	make -j$(nproc) PREFIX=${PREFIX} libobuparse.a && \
+	make install-static && \
+	make clean && \
+	\
+	cd "${PREFIX}" && \
+	mv -v obuparse "${PREFIX}/src"
+
+RUN <<EOF
+echo "**** obuparse | pkgconfig ****"
+set -euxo pipefail
+
+cat <<- _DOC_ > ${PREFIX}/lib/pkgconfig/obuparse.pc
+prefix=${PREFIX}
+includedir=\${prefix}/include
+
+Name: obuparse
+Description: A simple and portable single file AV1 OBU parser.
+Version: ${OBUPARSE_VERSION}
+
+Cflags: -I\${includedir}
+_DOC_
+EOF
+
+RUN echo "**** obuparse | check ****" && \
+	set -euxo pipefail && \
+	pkg-config --exists obuparse && \
+	check_static "${PREFIX}/lib/libobuparse.a" permissive
+
+## l-smash
+RUN echo "**** l-smash ****" && \
+	set -euxo pipefail && \
+	cd "${PREFIX}" && \
+	mkdir -p l-smash && \
+	cd l-smash && \
+	git init && \
+	git remote add origin https://github.com/Mr-Ojii/l-smash.git && \
+	git fetch --depth 1 origin "${LSMASH_VERSION}" && \
+	git checkout FETCH_HEAD && \
+	./configure \
+	--extra-cflags="${CFLAGS} -I${PREFIX}/include" \
+	--extra-ldflags="-L${PREFIX}/lib" \
+	--prefix="${PREFIX}" \
+	&& \
+	make -j$(nproc) && \
+	make install && \
+	make clean && \
+	\
+	pkg-config --exists liblsmash && \
+	check_static "${PREFIX}/lib/liblsmash.a" permissive && \
+	cd "${PREFIX}" && \
+	mv -v l-smash "${PREFIX}/src"
+
+## L-SMASH-Works
+RUN echo "**** L-SMASH-Works | download ****" && \
+	set -euxo pipefail && \
+	cd "${PREFIX}" && \
+	mkdir -p L-SMASH-Works && \
+	cd L-SMASH-Works && \
+	git init && \
+	git remote add origin https://github.com/Mr-Ojii/L-SMASH-Works.git && \
+	git fetch --depth 1 origin "${LSMASHWORKS_VERSION}" && \
+	git checkout FETCH_HEAD
+
+# RUN <<EOF
+# echo "**** L-SMASH-Works | create patch ****"
+# set -euxo pipefail
+#
+# cat <<- _DOC_ > ${PREFIX}/L-SMASH-Works/static_build.patch
+# --- a/AviSynth/meson.build
+# +++ b/AviSynth/meson.build
+# @@ -85,7 +85,7 @@
+#  if host_machine.system() == 'windows'
+#    add_project_arguments('-D__USE_MINGW_ANSI_STDIO', language: ['c', 'cpp'])
+#  endif
+#
+# -shared_module('lsmashsource', sources,
+# +library('lsmashsource', sources,
+#    dependencies: deps,
+#    install: true,
+#    install_dir: join_paths(avisynth_dep.get_pkgconfig_variable('libdir'), 'avisynth'),
+# _DOC_
+# EOF
+
+RUN echo "**** L-SMASH-Works | build ****" && \
+	set -euxo pipefail && \
+	cd "${PREFIX}/L-SMASH-Works" && \
+	# patch -p1 < static_build.patch && \
+	cd AviSynth && \
+	LDFLAGS="-Wl,-Bsymbolic ${LDFLAGS} -static-libgcc -static-libstdc++" \
+	CFLAGS="${CFLAGS}" CXXFLAGS="${CXXFLAGS}" \
+	meson setup build \
+	--buildtype=release \
+	# --default-library=static \
+	--prefix="${PREFIX}" \
+	--libdir="${PREFIX}/lib" \
+	-Db_staticpic=true \
+	&& \
+	ninja -vC build -j$(nproc) && \
+	ninja -vC build install && \
+	ls -lah "${PREFIX}/lib/" && \
+	ls -lah "${PREFIX}/lib/avisynth/" && \
+	ninja -vC build -t clean && \
+	\
+	cd "${PREFIX}" && \
+	mv -v L-SMASH-Works "${PREFIX}/src"
+
+RUN <<EOF
+echo "**** L-SMASH-Works | pkgconfig ****"
+cat <<- _DOC_ > ${PREFIX}/lib/pkgconfig/liblsmashsource.pc
+Name: L-SMASH-Works
+Description: Note about LSMASHVideoSource and LibavSMASHSource.
+Version: ${LSMASHWORKS_VERSION}
+
+Libs: -L${PREFIX}/lib/avisynth -llsmashsource \
+      -L${PREFIX}/lib -lavformat -lavcodec -lavutil \
+      -lswscale -lswresample -llsmash
+
+_DOC_
+EOF
+
+RUN echo "**** L-SMASH-Works | check ****" && \
+	set -euxo pipefail && \
+	pkg-config --exists liblsmashsource && \
+	check_static "${PREFIX}/lib/avisynth/liblsmashsource.so" permissive
+
+RUN echo "**** debug ****" && \
+	set -euo pipefail && \
+	echo "=== Test static binary linking ===" && \
+	check_static "${PREFIX}/bin/ffmpeg" && \
+	check_static "${PREFIX}/bin/ffprobe" && \
+	\
+	echo "=== Test pkg-config for all our libraries ===" && \
+	set +x && \
+	echo "==== Intel QSV" && \
+	for lib in \
+	libva igdgmm igfxcmrt vpl libmfx-gen; do \
+	if pkg-config --exists "${lib}" 2>/dev/null; then \
+	echo -e "${lib}: OK \t\t($(pkg-config --path ${lib}))"; \
+	else \
+	echo "${lib}: NOT FOUND"; \
+	fi; \
+	done && \
+	\
+	echo "==== Packages dependencies" && \
+	for lib in \
+	fontconfig freetype2 fribidi harfbuzz lame libdrm libpng zlib; do \
+	if pkg-config --exists "${lib}" 2>/dev/null; then \
+	echo -e "${lib}: OK \t\t($(pkg-config --path ${lib}))"; \
+	else \
+	echo "${lib}: NOT FOUND"; \
+	fi; \
+	done && \
+	\
+	echo "==== Static build dependencies" && \
+	for lib in \
+	avisynth libvmaf dav1d SvtAv1Enc vpx opus x264 x265 aribb24 libass; do \
+	if pkg-config --exists "${lib}" 2>/dev/null; then \
+	echo -e "${lib}: OK \t\t($(pkg-config --path ${lib}))"; \
+	else \
+	echo "${lib}: NOT FOUND"; \
+	fi; \
+	done
+
+RUN echo "**** check FFmpeg command ****" && \
+	set -euxo pipefail && \
+	ls -lah /usr/local/bin && \
+	${PREFIX}/bin/ffmpeg -version && \
+	${PREFIX}/bin/ffmpeg -hide_banner -hwaccels && \
+	${PREFIX}/bin/ffmpeg -hide_banner -buildconf && \
+	for i in decoders encoders; do echo ${i}:; ${PREFIX}/bin/ffmpeg -hide_banner -${i} | \
+	egrep -i "[x|h]264|[x|h]265|av1|cuvid|hevc|qsv|vaapi|vp9"; done
+
+RUN echo "**** Archive source code ****" && \
+	set -euxo pipefail && \
+	cd "${PREFIX}" && \
+	tar -cv -f "/tmp/src-$(date '+%Y%m%d%H%M%S%z').tar.xz" -C "${PREFIX}" src && \
+	rm -rf "${PREFIX}/src"
+
+RUN echo "**** versions.json write ****" && \
+	set -euxo pipefail && \
+	FONTCONFIG_VERSION=$(pkg-config --modversion fontconfig) \
+	FREETYPE_VERSION=$(pkg-config --modversion freetype2) \
+	FRIBIDI_VERSION=$(pkg-config --modversion fribidi) \
+	GLIB_VERSION=$(pkg-config --modversion glib) \
+	HARFBUZZ_VERSION=$(pkg-config --modversion harfbuzz) \
+	LAME_VERSION=$(pkg-config --modversion lame) \
+	LIBDRM_VERSION=$(pkg-config --modversion libdrm) \
+	LIBPNG_VERSION=$(pkg-config --modversion libpng) \
+	ZLIB_VERSION=$(pkg-config --modversion zlib) \
+	\
+	jq -n \
+	'{ \
+	"ffmpeg":           env.FFMPEG_VERSION, \
+	"fontconfig":       env.FONTCONFIG_VERSION, \
+	"glib":             env.GLIB_VERSION, \
+	"harfbuzz":         env.HARFBUZZ_VERSION, \
+	"lame":             env.LAME_VERSION, \
+	"libaribb24":       env.LIBARIBB24_VERSION, \
+	"libass":           env.LIBASS_VERSION, \
+	"libavisynth":      env.AVISYNTHPLUS_VERSION, \
+	"libdav1d":         env.AV1_DAV1D_VERSION, \
+	"libdrm":           env.LIBDRM_VERSION, \
+	"libfreetype":      env.FREETYPE_VERSION, \
+	"libfribidi":       env.FRIBIDI_VERSION, \
+	"libigdgmm":        env.INTEL_GMMLIB_VERSION, \
+	"libigfxcmrt":      env.INTEL_MEDIA_DRIVER_VERSION, \
+	"liblsmash":        env.LSMASH_VERSION, \
+	"liblsmashsource":  env.LSMASHWORKS_VERSION, \
+	"libmfx-gen":       env.INTEL_VPL_GPU_RT_VERSION, \
+	"libobuparse":      env.OBUPARSE_VERSION, \
+	"libopus":          env.OPUS_VERSION, \
+	"libpng":           env.LIBPNG_VERSION, \
+	"libsvtav1":        env.AV1_SVTAV1_VERSION, \
+	"libva":            env.INTEL_LIBVA_VERSION, \
+	"libvmaf":          env.VMAF_VERSION, \
+	"libvpl":           env.INTEL_LIBVPL_VERSION, \
+	"libvpx":           env.LIBVPX_VERSION, \
+	"libx264":          env.X264_VERSION, \
+	"libx265":          env.X265_VERSION, \
+	"zlib":             env.ZLIB_VERSION, \
+	}' > "${PREFIX}/versions.json"
+
+
+#- -------------------------------------------------------------------------------------------------
+#- Build JLSTSL
+#-
+FROM build-base AS build-jlstsl
+ARG PYTHONUNBUFFERED
+ARG WGET_OPTS
+
+# make options
+ARG CFLAGS \
+	CXXFLAGS \
+	LDFLAGS
+
+RUN echo "**** JLSTSL | Dependencies ****" && \
+	set -euxo pipefail && \
+	apk add --no-cache \
+	boost-dev boost-static \
+	gnutls-dev \
+	libstdc++ libgcc \
+	libunistring-dev
+
+# Copy FFmpeg from build-ffmpeg stage
+COPY --from=build-ffmpeg /opt/ffmpeg /opt/ffmpeg
+COPY                     modules     "${PREFIX}/src/JLSTSL/modules"
+
+# Force cache invalidation for build - Fixed Makefiles to use CXX
+RUN echo "Force rebuild at $(date +%s)" > /tmp/rebuild_timestamp_$(date +%s)_fixed_cstdint_headers
+
+ARG _JLSTLDIR="${PREFIX}/src/JLSTSL/modules/join_logo_scp_trial"
+
+# Build chapter_exe (dynamic linking)
+RUN echo "**** JLSTSL | chapter_exe ****" && \
+	set -euxo pipefail && \
+	cd "${PREFIX}/src/JLSTSL/modules/chapter_exe/src" && \
+	echo "Building chapter_exe with dynamic linking..." && \
+	sed -i'' -e "s@-I/usr/local/include/avisynth@$(pkg-config --cflags avisynth)@g" \
+	-e "s@-lavisynth@$(pkg-config --libs avisynth)@g" Makefile && \
+	echo "=== Makefile content ===" && \
+	cat Makefile && \
+	echo "=== Environment check ===" && \
+	pkg-config --exists avisynth && echo "AviSynth: OK" || echo "AviSynth: FAILED" && \
+	make clean && \
+	echo "=== Starting compilation ===" && \
+	(make V=1 VERBOSE=1 -j1 2>&1 | tee /tmp/chapter_exe_build.log; echo "exit code: $?") && \
+	echo "=== Build log ===" && \
+	cat /tmp/chapter_exe_build.log && \
+	echo "=== Directory listing ===" && \
+	ls -lah && \
+	echo "=== Compilation completed ===" && \
+	(test -f chapter_exe && echo "Binary created successfully" || echo "ERROR: Binary not created") && \
+	mkdir -p "${_JLSTLDIR}/bin" && \
+	if [ -f chapter_exe ]; then cp chapter_exe "${_JLSTLDIR}/bin/"; else echo "Skipping copy: chapter_exe not found"; fi && \
+	\
+	echo "Checking chapter_exe binary..." && \
+	ls -la "${_JLSTLDIR}/bin/" && \
+	if [ -f "${_JLSTLDIR}/bin/chapter_exe" ]; then \
+	ldd "${_JLSTLDIR}/bin/chapter_exe" || echo "Static binary (no dynamic dependencies)"; \
+	else \
+	echo "chapter_exe not found in bin directory"; \
+	fi
+
+# Build logoframe (dynamic linking)
+RUN echo "**** JLSTSL | logoframe ****" && \
+	set -euxo pipefail && \
+	cd "${PREFIX}/src/JLSTSL/modules/logoframe/src" && \
+	echo "Building logoframe with dynamic linking..." && \
+	sed -i'' -e "s@-I/usr/local/include/avisynth@$(pkg-config --cflags avisynth)@g" \
+	-e "s@-lavisynth@$(pkg-config --libs avisynth)@g" Makefile && \
+	echo "=== Makefile content ===" && \
+	cat Makefile && \
+	echo "=== AviSynth library check ===" && \
+	ls -la /opt/ffmpeg/lib/libavisynth.* || echo "AviSynth library not found in expected location" && \
+	make clean && \
+	echo "=== Starting compilation ===" && \
+	make V=1 VERBOSE=1 -j$(nproc) 2>&1 | tee /tmp/logoframe_build.log && \
+	echo "=== Compilation completed ===" && \
+	(test -f logoframe && echo "Binary created successfully" || echo "ERROR: Binary not created") && \
+	mkdir -p "${_JLSTLDIR}/bin" && \
+	if [ -f logoframe ]; then cp logoframe "${_JLSTLDIR}/bin/"; else echo "Skipping copy: logoframe not found"; fi && \
+	make clean && \
+	\
+	echo "Checking logoframe binary..." && \
+	ls -la "${_JLSTLDIR}/bin/logoframe" && \
+	ldd "${_JLSTLDIR}/bin/logoframe" || echo "Static binary (no dynamic dependencies)" && \
+	ls -lah /opt/ffmpeg/lib/*avisynth* /opt/ffmpeg/lib/avisynth || true
+
+# Build join_logo_scp (already static)
+RUN echo "**** JLSTSL | join_logo_scp ****" && \
+	set -euxo pipefail && \
+	cd "${PREFIX}/src/JLSTSL/modules/join_logo_scp/src" && \
+	echo "Building join_logo_scp with static linking..." && \
+	make -j$(nproc) && \
+	mkdir -p "${_JLSTLDIR}/bin" && \
+	cp join_logo_scp "${_JLSTLDIR}/bin/" && \
+	make clean && \
+	\
+	echo "Checking join_logo_scp binary..." && \
+	ls -la "${_JLSTLDIR}/bin/join_logo_scp" && \
+	check_static "${_JLSTLDIR}/bin/join_logo_scp" strict
+
+# Build tsdivider with dynamic Boost first
+RUN echo "**** JLSTSL | tsdivider ****" && \
+	set -euxo pipefail && \
+	cd "${PREFIX}/src/JLSTSL/modules/tsdivider/" && \
+	mkdir -p build && cd build && \
+	echo "Building tsdivider with dynamic linking..." && \
+	cmake -G "Unix Makefiles" \
+	-DCMAKE_BUILD_TYPE=Release \
+	-DCMAKE_C_FLAGS="${CFLAGS}" \
+	-DCMAKE_CXX_FLAGS="${CXXFLAGS}" \
+	-DCMAKE_INSTALL_PREFIX="${_JLSTLDIR}" \
+	-DCMAKE_POSITION_INDEPENDENT_CODE=ON \
+	.. && \
+	make -j$(nproc) && \
+	make install && \
+	make clean && \
+	\
+	echo "Checking tsdivider binary..." && \
+	ls -la "${_JLSTLDIR}/bin/tsdivider" && \
+	ldd "${_JLSTLDIR}/bin/tsdivider" || echo "Static binary (no dynamic dependencies)"
+
+# Build delogo as shared library (default)
+RUN echo "**** JLSTSL | delogo | build ****" && \
+	set -euxo pipefail && \
+	cd "${PREFIX}/src/JLSTSL/modules/delogo/src" && \
+	echo "Building delogo as shared library..." && \
+	sed -i'' -e "s@-I/usr/local/include/avisynth@$(pkg-config --cflags avisynth)@g" \
+	-e "s@INSTALL_DIR = /usr/local/lib/avisynth/@INSTALL_DIR = ${PREFIX}/lib/avisynth/@g" Makefile && \
+	make -j$(nproc) && \
+	mkdir -p "${PREFIX}/lib/avisynth" && \
+	make install && \
+	make clean && \
+	\
+	echo "Checking delogo library..." && \
+	ls -la "${PREFIX}/lib/avisynth/"
+
+RUN <<EOF
+echo "**** delogo | pkgconfig ****"
+set -euxo pipefail
+cat <<- _DOC_ > ${PREFIX}/lib/pkgconfig/libdelogo.pc
+Name: libdelogo
+Description: Transparent logo filter for AviSynth+ Linux
+Version: 0.05c
+
+Libs: -L${PREFIX}/lib/avisynth -ldelogo
+_DOC_
+EOF
+
+RUN echo "**** JLSTSL | delogo | check ****" && \
+	set -euxo pipefail && \
+	pkg-config --exists libdelogo && \
+	echo "Delogo library built successfully" && \
+	ls -la "${PREFIX}/lib/avisynth/"
+
+RUN set -euxo pipefail && \
+	ls -lah "${_JLSTLDIR}" "${_JLSTLDIR}/bin"
+
+RUN echo "**** JLSTSL | join_logo_scp_trial deploy ****" && \
+	mv -v "${_JLSTLDIR}" /join_logo_scp_trial && \
+	rm -rf /join_logo_scp_trial/JL && \
+	cp -av "${PREFIX}/src/JLSTSL/modules/join_logo_scp/JL" /join_logo_scp_trial/ && \
+	test -f /join_logo_scp_trial/JL/data/ChList.csv
+
+#RUN echo "**** join_logo_scp_trial ****" && \
+#    set -euxo pipefail && \
+#    cd "${PREFIX}/src/JLSTSL/modules/join_logo_scp_trial" && \
+#    node -v && \
+#    npm --version && \
+#    npm install --no-save --loglevel=info --omit=dev && \
+#    \
+#    # Copy JL directory
+#    mv -v ${PREFIX}/src/JLSTSL/modules/join_logo_scp_trial /join_logo_scp_trial && \
+#    rm -rf /join_logo_scp_trial/JL && \
+#    cp -av "${PREFIX}/src/JLSTSL/modules/join_logo_scp/JL" /join_logo_scp_trial/ && \
+#    test -f /join_logo_scp_trial/JL/data/ChList.csv && \
+#    \
+#    cd /join_logo_scp_trial && \
+#    npm link
+
+
+#- -------------------------------------------------------------------------------------------------
+#- Runner
+#-
+FROM alpine:3.19 AS runner
+ARG PYTHONUNBUFFERED
+
+ARG NODE_ENV
+ENV NODE_ENV=${NODE_ENV}
+ARG NODE_VERSION
+
+ARG TZ
+ENV TZ=${TZ}
+
+ENV LD_LIBRARY_PATH="/opt/ffmpeg/lib:/opt/ffmpeg/lib/avisynth"
+ENV PKG_CONFIG_PATH="/opt/ffmpeg/lib/pkgconfig"
+ENV PATH="/opt/ffmpeg/bin:${PATH}"
+ENV STATIC_BUILD="1"
+ENV MUSL_COMPAT="1"
+
+SHELL ["/bin/sh", "-c"]
+
+RUN echo "**** Dependencies ****" && \
+	set -euxo pipefail && \
+	apk add --no-cache \
+	bash \
+	binutils \
+	ca-certificates \
+	curl \
+	gnupg \
+	jq \
+	less \
+	tzdata \
+	wget \
+	&& \
+	\
+	# Set timezone
+	cp "/usr/share/zoneinfo/${TZ}" /etc/localtime && \
+	echo "${TZ}" > /etc/timezone
+
+SHELL ["/bin/bash", "-c"]
+
+RUN echo "**** Nodejs v20 setup ****" && \
+	set -euxo pipefail && \
+	apk add --no-cache \
+	nodejs \
+	npm
+
+RUN echo "**** Nodejs setup check ****" && \
+	set -euxo pipefail && \
+	node -v && \
+	npm --version
+
+RUN echo "**** Runtime Dependencies ****" && \
+	set -euxo pipefail && \
+	apk add --no-cache \
+	libc6-compat \
+	libgcc \
+	libstdc++ \
+	boost-filesystem \
+	boost-program_options \
+	boost-system \
+	\
+	libc6-compat \
+	libdrm \
+	libdrm-dev \
+	libgcc \
+	libstdc++ \
+	pkgconf \
+	\
+	glib-dev glib-static \
+	lame-dev \
+	libdrm-dev \
+	libpng-dev libpng-static \
+	zlib-dev zlib-static
+
+
+# JLSTSL runtime
+COPY --from=build-jlstsl /join_logo_scp_trial       /join_logo_scp_trial
+WORKDIR "/join_logo_scp_trial"
+
+RUN echo "**** join_logo_scp_trial setup ****" && \
+	set -euxo pipefail && \
+	cd "/join_logo_scp_trial" && \
+	ls -lah bin && \
+	node -v && \
+	npm --version && \
+	npm install --no-save --loglevel=info --omit=dev && \
+	npm link
+
+RUN echo "**** check link join_logo_scp_trial ****" && \
+	set -euxo pipefail && \
+	jlse --help
+
+# FFmpeg runtime
+#COPY --from=build-ffmpeg /opt/ffmpeg                /opt/ffmpeg
+COPY --from=build-jlstsl /opt/ffmpeg                /opt/ffmpeg
+
+RUN echo "**** check FFmpeg library ****" && \
+	set -euxo pipefail && \
+	ls -lah /opt/ffmpeg/lib && \
+	ls -lah /opt/ffmpeg/lib/avisynth && \
+	find /opt/ffmpeg -name "*avisynth*" -type f && \
+	ls -lah /usr/local/bin && \
+	ffmpeg -version && \
+	echo "LD_LIBRARY_PATH: $LD_LIBRARY_PATH" && \
+	ldd /join_logo_scp_trial/bin/logoframe || true
+
+RUN <<EOF
+echo "**** check FFmpeg ****"
+set -euo pipefail
+
+for codec in "libx264" "libx265" "libsvtav1" "libvpx" "libvpx-vp9" "mpeg2video"
+do
+    echo "=============== codec:v ${codec} ==============="
+    set -x
+    ffmpeg -loglevel error -f lavfi -i testsrc2=size=1920x1080:rate=29.97:duration=0.5 -c:v ${codec} -f null -
+    set +x
+done
+
+for codec in "aac" "flac" "libmp3lame" "libopus"
+do
+    echo "=============== codec:a ${codec} ==============="
+    set -x
+    ffmpeg -f lavfi -i sine=220:4:d=5 -f lavfi -i sine=220:0:d=5 -filter_complex amerge=2 -c:a aac -f null -
+    set +x
+done
+
+EOF
+
+ENTRYPOINT [ "/bin/bash", "-c" ]
+CMD [ "" ]
+
+# vim: set filetype=dockerfile:
