@@ -25,10 +25,14 @@ fi
 
 logger() {
 	local message="${1}"
-	local color="${2:-white}"
+	local color="${2:-none}"
 
 	# Colored output to terminal
-	echo -e "${COLORS[$color]} ${message}${COLORS[reset]}"
+	if [ ${color} == "none" ]; then
+		echo -e "${message}"
+	else
+		echo -e "${COLORS[$color]} ${message}${COLORS[reset]}"
+	fi
 
 	# Output to log file without color
 	local log_dir=$(dirname "${LOG_FILE}")
