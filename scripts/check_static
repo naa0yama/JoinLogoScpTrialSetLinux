@@ -54,6 +54,12 @@ check_static_binary() {
                 local ldd_output_plugin=$(ldd "${file_path}" 2>&1)
                 local has_non_system_deps_plugin=false
                 while IFS= read -r line; do
+                    # Check for missing libraries first
+                    if [[ "$line" =~ =\>\ not\ found ]]; then
+                        has_non_system_deps_plugin=true
+                        break
+                    fi
+
                     local lib_path=""
                     if [[ "$line" =~ =\>\ (.+)\ \( ]]; then
                         lib_path="${BASH_REMATCH[1]}"
@@ -96,6 +102,12 @@ check_static_binary() {
             # In strict mode, check if it only links to system libraries
             local has_non_system_deps=false
             while IFS= read -r line; do
+                # Check for missing libraries first
+                if [[ "$line" =~ =\>\ not\ found ]]; then
+                    has_non_system_deps=true
+                    break
+                fi
+
                 # Handle both "=> /path/to/lib (address)" and "/path/to/lib (address)" formats
                 local lib_path=""
                 if [[ "$line" =~ =\>\ (.+)\ \( ]]; then

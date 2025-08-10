@@ -58,16 +58,16 @@ ARG CXXFLAGS="-O3 -static-libgcc -fno-strict-overflow -fstack-protector-all -fPI
 ARG LDFLAGS="-Wl,-z,relro,-z,now -Wl,--gc-sections -Wl,--strip-all -s"
 
 # retry dns and some http codes that might be transient errors
-ARG WGET_OPTS="--retry-on-host-error --retry-on-http-error=429,500,502,503"
-
+ARG CURL_OPTS="-sfSL --retry 3 --retry-delay 2 --retry-connrefused"
 
 #- -------------------------------------------------------------------------------------------------
 #- Builder
 #-
 FROM ubuntu:noble AS base
 # ARG は、利用する各ステージごとに宣言する必要がある。
-ARG DEBIAN_FRONTEND
+ARG CURL_OPTS
 ARG DEBCONF_NOWARNINGS
+ARG DEBIAN_FRONTEND
 ARG PYTHONUNBUFFERED
 
 ARG NODE_ENV
@@ -97,13 +97,11 @@ RUN echo "**** Dependencies | base ****" && \
 	apt-get update && \
 	apt-get -y upgrade && \
 	apt-get -y install --no-install-recommends \
-	binutils \
 	ca-certificates \
 	curl \
-	gnupg \
+	file \
 	less \
 	tzdata \
-	wget \
 	# jtv_gen.sh
 	bc \
 	coreutils \
@@ -121,12 +119,14 @@ RUN echo "**** Dependencies | base ****" && \
 RUN echo "**** Dependencies | tsduck ****" && \
 	set -euxo pipefail && \
 	apt-get update && \
-	_tsduckdownload_url="$(curl -H "User-Agent: builder/1.0" -sfSL https://api.github.com/repos/tsduck/tsduck/releases/latest | \
+	_tsduckdownload_url="$(curl ${CURL_OPTS} -H "User-Agent: builder/1.0" -sfSL https://api.github.com/repos/tsduck/tsduck/releases/latest | \
 	jq -r '.assets[] | select(.name | startswith("tsduck_") and endswith("ubuntu24_amd64.deb")) | .browser_download_url')" && \
-	wget "${_tsduckdownload_url}" && \
-	apt-get -y install "./$(basename "$_tsduckdownload_url")" && \
+	_tsduck_filename="$(basename "$_tsduckdownload_url")" && \
+	curl ${CURL_OPTS} -o "./${_tsduck_filename}" "${_tsduckdownload_url}" && \
+	ls -lah && \
+	apt-get -y install "./${_tsduck_filename}" && \
 	tsp --version && \
-	rm -rf "./$(basename "$_tsduckdownload_url")"
+	rm -rf "./${_tsduck_filename}"
 
 RUN echo "**** Dependencies | FFmpeg runtime ****" && \
 	set -euxo pipefail && \
@@ -134,26 +134,11 @@ RUN echo "**** Dependencies | FFmpeg runtime ****" && \
 	apt-get -y upgrade && \
 	apt-get -y install --no-install-recommends \
 	# DRM and mp3lame
-	libdrm-dev libmp3lame0 \
+	libdrm2 libmp3lame0 \
 	# FFmpeg filter drawtext
-	fonts-ubuntu libfontconfig1 libfreetype6 libfribidi-dev libharfbuzz-dev \
-	&& \
-	\
-	# Cleanup \
-	apt-get -y autoremove && \
-	apt-get -y clean && \
-	rm -rf /var/lib/apt/lists/*
-
-RUN echo "**** Dependencies | JLSTSL runtime ****" && \
-	set -euxo pipefail && \
-	apt-get update && \
-	apt-get -y install --no-install-recommends \
-	libboost-filesystem-dev \
-	libboost-program-options-dev \
-	libboost-system-dev \
-	# libc6 \
-	# libgcc-s1 \
-	# libstdc++6 \
+	fonts-ubuntu libharfbuzz0b libfribidi0 \
+	# tsdivider
+	libboost-program-options1.83.0 libboost-filesystem1.83.0 \
 	&& \
 	\
 	# Cleanup \
@@ -163,7 +148,7 @@ RUN echo "**** Dependencies | JLSTSL runtime ****" && \
 
 RUN echo "**** Nodejs | setup ****" && \
 	set -euxo pipefail && \
-	curl -sfSL "https://deb.nodesource.com/setup_${NODE_VERSION}.x" | bash - && \
+	curl ${CURL_OPTS} "https://deb.nodesource.com/setup_${NODE_VERSION}.x" | bash - && \
 	apt-get update && \
 	apt-get install -y --no-install-recommends \
 	nodejs &&\
@@ -180,31 +165,23 @@ RUN  echo "**** Nodejs | checking ****" && \
 
 RUN echo "**** versions.json write ****" && \
 	set -euxo pipefail && \
-	FONTCONFIG_VERSION=$(dpkg-query -W -f='${Version}\n' fontconfig) \
 	FONTS_UBUNTU_VERSION=$(dpkg-query -W -f='${Version}\n' fonts-ubuntu) \
-	LIBBOOST_FILESYSTEM_DEV_VERSION=$(dpkg-query -W -f='${Version}\n' libboost-filesystem-dev) \
-	LIBBOOST_PROGRAM_OPTIONS_DEV_VERSION=$(dpkg-query -W -f='${Version}\n' libboost-program-options-dev) \
-	LIBBOOST_SYSTEM_DEV_VERSION=$(dpkg-query -W -f='${Version}\n' libboost-system-dev) \
-	LIBDRM_DEV_VERSION=$(dpkg-query -W -f='${Version}\n' libdrm-dev) \
-	LIBFONTCONFIG_VERSION=$(dpkg-query -W -f='${Version}\n' libfontconfig1) \
-	LIBFREETYPE_VERSION=$(dpkg-query -W -f='${Version}\n' libfreetype6) \
-	LIBFRIBIDI_DEV_VERSION=$(dpkg-query -W -f='${Version}\n' libfribidi-dev) \
-	LIBHARFBUZZ_DEV_VERSION=$(dpkg-query -W -f='${Version}\n' libharfbuzz-dev) \
-	LIBMP3LAME_VERSION=$(dpkg-query -W -f='${Version}\n' libmp3lame0) \
+	LIBBOOST_FILESYSTEM_VERSION=$(dpkg-query -W -f='${Version}\n' libboost-filesystem1.83.0) \
+	LIBBOOST_PROGRAM_OPTIONS_VERSION=$(dpkg-query -W -f='${Version}\n' libboost-program-options1.83.0) \
+	LIBDRM2_VERSION=$(dpkg-query -W -f='${Version}\n' libdrm2) \
+	LIBFRIBIDI0_VERSION=$(dpkg-query -W -f='${Version}\n' libfribidi0) \
+	LIBHARFBUZZ0B_VERSION=$(dpkg-query -W -f='${Version}\n' libharfbuzz0b) \
+	LIBMP3LAME0_VERSION=$(dpkg-query -W -f='${Version}\n' libmp3lame0) \
 	NODEJS_VERSION=$(dpkg-query -W -f='${Version}\n' nodejs) \
 	TSDUCK_VERSION=$(dpkg-query -W -f='${Version}\n' tsduck) \
 	jq -n '{ \
-	"fontconfig": env.FONTCONFIG_VERSION, \
 	"fonts-ubuntu": env.FONTS_UBUNTU_VERSION, \
-	"libboost-filesystem-dev": env.LIBBOOST_FILESYSTEM_DEV_VERSION, \
-	"libboost-program-options-dev": env.LIBBOOST_PROGRAM_OPTIONS_DEV_VERSION, \
-	"libboost-system-dev": env.LIBBOOST_SYSTEM_DEV, \
-	"libdrm-dev": env.LIBDRM_DEV_VERSION, \
-	"libfontconfig1": env.LIBFONTCONFIG_VERSION, \
-	"libfreetype": env.LIBFREETYPE_VERSION, \
-	"libfribidi-dev": env.LIBFRIBIDI_DEV_VERSION, \
-	"libharfbuzz-dev": env.LIBHARFBUZZ_DEV_VERSION, \
-	"libmp3lame": env.LIBMP3LAME_VERSION, \
+	"libboost-filesystem1.83.0": env.LIBBOOST_FILESYSTEM_VERSION, \
+	"libboost-program-options1.83.0": env.LIBBOOST_PROGRAM_OPTIONS_VERSION, \
+	"libdrm2": env.LIBDRM2_VERSION, \
+	"libfribidi0": env.LIBFRIBIDI0_VERSION, \
+	"libharfbuzz0b": env.LIBHARFBUZZ0B_VERSION, \
+	"libmp3lame0": env LIBMP3LAME0_VERSION, \
 	"nodejs": env.NODEJS_VERSION, \
 	"tsduck": env.TSDUCK_VERSION, \
 	}' > "${PREFIX}/versions_base.json"
@@ -226,6 +203,7 @@ RUN echo "**** Build Dependencies ****" && \
 	apt-file \
 	autoconf \
 	automake \
+	binutils \
 	build-essential \
 	checkinstall \
 	cmake \
@@ -251,10 +229,12 @@ RUN echo "**** Build Dependencies | FFmpeg ****" && \
 	set -euxo pipefail && \
 	apt-get update && \
 	apt-get -y install --no-install-recommends \
+	# DRM and mp3lame
+	libdrm-dev libmp3lame-dev \
+	# FFmpeg filter drawtext
+	libfontconfig1 libfreetype6 libfribidi-dev libharfbuzz-dev \
 	# libaribcaption and libfreetype
 	libfontconfig-dev libfreetype-dev \
-	# libmp3lame
-	libmp3lame-dev \
 	&& \
 	\
 	# Cleanup \
@@ -264,12 +244,24 @@ RUN echo "**** Build Dependencies | FFmpeg ****" && \
 
 RUN echo "**** versions.json write ****" && \
 	set -euxo pipefail && \
+	FONTCONFIG_VERSION=$(dpkg-query -W -f='${Version}\n' fontconfig) \
+	LIBDRM_DEV_VERSION=$(dpkg-query -W -f='${Version}\n' libdrm-dev) \
 	LIBFONTCONFIG_DEV_VERSION=$(dpkg-query -W -f='${Version}\n' libfontconfig-dev) \
+	LIBFONTCONFIG_VERSION=$(dpkg-query -W -f='${Version}\n' libfontconfig1) \
 	LIBFREETYPE_DEV_VERSION=$(dpkg-query -W -f='${Version}\n' libfreetype-dev) \
+	LIBFREETYPE_VERSION=$(dpkg-query -W -f='${Version}\n' libfreetype6) \
+	LIBFRIBIDI_DEV_VERSION=$(dpkg-query -W -f='${Version}\n' libfribidi-dev) \
+	LIBHARFBUZZ_DEV_VERSION=$(dpkg-query -W -f='${Version}\n' libharfbuzz-dev) \
 	LIBMP3LAME_DEV_VERSION=$(dpkg-query -W -f='${Version}\n' libmp3lame-dev) \
 	jq -n '{ \
+	"fontconfig": env.FONTCONFIG_VERSION, \
+	"libdrm-dev": env.LIBDRM_DEV_VERSION, \
 	"libfontconfig-dev": env.LIBFONTCONFIG_DEV_VERSION, \
+	"libfontconfig1": env.LIBFONTCONFIG_VERSION, \
 	"libfreetype-dev": env.LIBFREETYPE_DEV_VERSION, \
+	"libfreetype": env.LIBFREETYPE_VERSION, \
+	"libfribidi-dev": env.LIBFRIBIDI_DEV_VERSION, \
+	"libharfbuzz-dev": env.LIBHARFBUZZ_DEV_VERSION, \
 	"libmp3lame-dev": env.LIBMP3LAME_DEV_VERSION, \
 	}' > "${PREFIX}/versions_build-base.json"
 
@@ -1063,6 +1055,21 @@ RUN echo "**** JLSTSL | L-SMASH-Works | check ****" && \
 #-
 
 COPY						modules											"${PREFIX}-src/JLSTSL/modules"
+
+RUN echo "**** Dependencies | JLSTSL runtime ****" && \
+	set -euxo pipefail && \
+	apt-get update && \
+	apt-get -y install --no-install-recommends \
+	libboost-filesystem1.83-dev \
+	libboost-program-options1.83-dev \
+	libboost-system1.83-dev \
+	&& \
+	\
+	# Cleanup \
+	apt-get -y autoremove && \
+	apt-get -y clean && \
+	rm -rf /var/lib/apt/lists/*
+
 ARG _JLSTLDIR="${PREFIX}-src/JLSTSL/modules/join_logo_scp_trial"
 ARG _BINDIR="${PREFIX}-src/JLSTSL/modules/join_logo_scp_trial"
 RUN echo "**** JLSTSL | chapter_exe ****" && \
@@ -1274,9 +1281,14 @@ EOF
 # Copy scripts
 COPY						"scripts/test_jlse"								"${PREFIX}/bin/test_jlse"
 COPY --from=build-jlstsl	/join_logo_scp_trial							/join_logo_scp_trial
+
 RUN echo  "**** jlse | check exec  ****" && \
 	set -euxo pipefail && \
 	cd /join_logo_scp_trial && \
+	check_static "bin/chapter_exe" && \
+	check_static "bin/logoframe" && \
+	check_static "bin/join_logo_scp" && \
+	check_static "bin/tsdivider" && \
 	npm link && \
 	jlse --help
 
