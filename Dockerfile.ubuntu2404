@@ -181,7 +181,7 @@ RUN echo "**** versions.json write ****" && \
 	"libdrm2": env.LIBDRM2_VERSION, \
 	"libfribidi0": env.LIBFRIBIDI0_VERSION, \
 	"libharfbuzz0b": env.LIBHARFBUZZ0B_VERSION, \
-	"libmp3lame0": env LIBMP3LAME0_VERSION, \
+	"libmp3lame0": env.LIBMP3LAME0_VERSION, \
 	"nodejs": env.NODEJS_VERSION, \
 	"tsduck": env.TSDUCK_VERSION, \
 	}' > "${PREFIX}/versions_base.json"
