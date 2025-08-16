@@ -519,10 +519,10 @@ isexe@^2.0.0:
   resolved "https://registry.yarnpkg.com/isexe/-/isexe-2.0.0.tgz#e8fbf374dc556ff8947a10dcb0572d633f2cfa10"
   integrity sha512-RHxMLp9lnKHGHRng9QFhRCMbYAcVpn69smSGcq3f36xjgVVWThj4qqLbTLlq7Ssj8B+fIQ1EuCEGI2lKsyQeIw==
 
-jaconv@1.0.4:
-  version "1.0.4"
-  resolved "https://registry.yarnpkg.com/jaconv/-/jaconv-1.0.4.tgz#0cffeeea50c14651b66eb6cfe38705b0cbb2c1df"
-  integrity sha512-7cB2JN+sMAf5zpdeclDh1Rzqi5E/9fX348GsRg83HrusRvBFDqsRKH+czME55glrW3nBcBYrOzl9OCp7r39psg==
+jaconv@1.1.2:
+  version "1.1.2"
+  resolved "https://registry.yarnpkg.com/jaconv/-/jaconv-1.1.2.tgz#9fee7655efd9ffe3b69c76cba7827221a4df05e4"
+  integrity sha512-5UlGUdJJROEMw0ffOHXYQkhFO7zTT+Q6e3RJA3vEGQM5AHM0Ifn8IIohcUS4KwFNNLkFiiVS1rjxSZYmfOk4lA==
 
 js-yaml@^4.1.0:
   version "4.1.0"
