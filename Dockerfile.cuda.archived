@@ -1,4 +1,4 @@
-# syntax=docker/dockerfile:1
+# syntax=docker/dockerfile:1@sha256:dabfc0969b935b2080555ace70ee69a5261af8a8f1b4df97b9e7fbcf6722eddf
 #- -------------------------------------------------------------------------------------------------
 #- Global
 #-
@@ -44,7 +44,7 @@ ARG NVIDIA_DRIVER_CAPABILITIES=compute,video,utility
 #- -------------------------------------------------------------------------------------------------
 #- Builder
 #-
-FROM ubuntu:jammy AS base
+FROM ubuntu:jammy@sha256:4e0171b9275e12d375863f2b3ae9ce00a4c53ddda176bd55868df97ac6f21a6e AS base
 # ARG は、利用する各ステージごとに宣言する必要がある。
 ARG DEBIAN_FRONTEND
 ARG DEBCONF_NOWARNINGS
