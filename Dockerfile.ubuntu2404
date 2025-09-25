@@ -33,7 +33,7 @@ ARG AVISYNTHPLUS_VERSION=v3.7.5
 ## renovate: datasource=github-releases packageName=xqq/libaribcaption versioning=semver
 ARG LIBARIBCAPTION_VERSION=v1.1.1
 ## renovate: datasource=github-tags packageName=webmproject/libvpx versioning=semver
-ARG LIBVPX_VERSION=v1.15.0
+ARG LIBVPX_VERSION=v1.15.2
 ## renovate: datasource=github-releases packageName=xiph/opus versioning=semver
 ARG OPUS_VERSION=v1.5.2
 ## renovate: datasource=github-releases packageName=Netflix/vmaf versioning=semver
