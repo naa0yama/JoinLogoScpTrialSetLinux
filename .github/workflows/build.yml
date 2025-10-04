@@ -59,6 +59,58 @@ jobs:
           # Default: 1
           fetch-depth: 0
 
+      - name: Generate new tag
+        if: ${{ inputs.type != '' }}
+        id: new_tag
+        run: |
+          set -euo pipefail
+
+          TODAY=$(date +'%y.%m.%d')
+          echo "Today's date: ${TODAY}"
+
+          if [ "${{ inputs.type }}" = "release" ]; then
+            # Release tag: vYY.MM.DD.XX
+            MATCHED_TAGS=$(git tag --sort=creatordate | grep -E "^v[0-9]{2}\.[0-9]{2}\.[0-9]{2}\.[0-9]{2}$" || true)
+            echo "Matched release tags:"
+            echo "${MATCHED_TAGS}"
+
+            LATEST_TAG=$(echo "${MATCHED_TAGS}" | grep "^v${TODAY}\." | tail -n 1 || true)
+            echo "Latest release tag for today: ${LATEST_TAG}"
+
+            if [ "${LATEST_TAG}" = "" ]; then
+              NEW_TAG="v${TODAY}.01"
+            else
+              LAST_NUM=$(echo "${LATEST_TAG}" | cut -d '.' -f 4)
+              NEW_NUM=$(printf "%02d" $((10#${LAST_NUM} + 1)))
+              NEW_TAG="v${TODAY}.${NEW_NUM}"
+            fi
+          else
+            # Beta tag: vYY.MM.DD.XX-betaX
+            MATCHED_TAGS=$(git tag --sort=creatordate | grep -E "^v[0-9]{2}\.[0-9]{2}\.[0-9]{2}\.[0-9]{2}-beta[0-9]+$" || true)
+            echo "Matched beta tags:"
+            echo "${MATCHED_TAGS}"
+
+            LATEST_TAG=$(echo "${MATCHED_TAGS}" | grep "^v${TODAY}\." | tail -n 1 || true)
+            echo "Latest beta tag for today: ${LATEST_TAG}"
+
+            if [ "${LATEST_TAG}" = "" ]; then
+              NEW_TAG="v${TODAY}.01-beta1"
+            else
+              BASE_VER=$(echo "${LATEST_TAG}" | cut -d '-' -f 1)
+              BETA_NUM=$(echo "${LATEST_TAG}" | cut -d '-' -f 2 | sed 's/beta//g')
+
+              if [ "${BASE_VER}" = "v${TODAY}.01" ]; then
+                NEW_TAG="v${TODAY}.01-beta$((BETA_NUM + 1))"
+              else
+                LAST_NUM=$(echo "${BASE_VER}" | cut -d '.' -f 4)
+                NEW_NUM=$(printf "%02d" $((10#${LAST_NUM} + 1)))
+                NEW_TAG="v${TODAY}.${NEW_NUM}-beta1"
+              fi
+            fi
+          fi
+          echo "New tag: ${NEW_TAG}"
+          echo "new_tag=${NEW_TAG}" >> $GITHUB_OUTPUT
+
       - uses: docker/metadata-action@c1e51972afc2121e065aed6d45c65596fe445f3f # v5
         id: meta
         with:
@@ -71,6 +123,9 @@ jobs:
 
             # minimal (short sha)
             type=sha,enable=true,prefix=,format=short
+
+            # workflow_dispatch tag
+            type=raw,value=${{ steps.new_tag.outputs.new_tag }},enable=${{ inputs.type != '' }}
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@e468171a9de216ec08956ac3ada2f0791b6bd435 # v3
@@ -142,58 +197,6 @@ jobs:
             }
 
             console.log('Cleanup completed');
-
-      - name: Generate new tag
-        if: ${{ inputs.type != '' }}
-        id: new_tag
-        run: |
-          set -euo pipefail
-
-          TODAY=$(date +'%y.%m.%d')
-          echo "Today's date: ${TODAY}"
-
-          if [ "${{ inputs.type }}" = "release" ]; then
-            # Release tag: vYY.MM.DD.XX
-            MATCHED_TAGS=$(git tag --sort=creatordate | grep -E "^v[0-9]{2}\.[0-9]{2}\.[0-9]{2}\.[0-9]{2}$" || true)
-            echo "Matched release tags:"
-            echo "${MATCHED_TAGS}"
-
-            LATEST_TAG=$(echo "${MATCHED_TAGS}" | grep "^v${TODAY}\." | tail -n 1 || true)
-            echo "Latest release tag for today: ${LATEST_TAG}"
-
-            if [ "${LATEST_TAG}" = "" ]; then
-              NEW_TAG="v${TODAY}.01"
-            else
-              LAST_NUM=$(echo "${LATEST_TAG}" | cut -d '.' -f 4)
-              NEW_NUM=$(printf "%02d" $((10#${LAST_NUM} + 1)))
-              NEW_TAG="v${TODAY}.${NEW_NUM}"
-            fi
-          else
-            # Beta tag: vYY.MM.DD.XX-betaX
-            MATCHED_TAGS=$(git tag --sort=creatordate | grep -E "^v[0-9]{2}\.[0-9]{2}\.[0-9]{2}\.[0-9]{2}-beta[0-9]+$" || true)
-            echo "Matched beta tags:"
-            echo "${MATCHED_TAGS}"
-
-            LATEST_TAG=$(echo "${MATCHED_TAGS}" | grep "^v${TODAY}\." | tail -n 1 || true)
-            echo "Latest beta tag for today: ${LATEST_TAG}"
-
-            if [ "${LATEST_TAG}" = "" ]; then
-              NEW_TAG="v${TODAY}.01-beta1"
-            else
-              BASE_VER=$(echo "${LATEST_TAG}" | cut -d '-' -f 1)
-              BETA_NUM=$(echo "${LATEST_TAG}" | cut -d '-' -f 2 | sed 's/beta//g')
-
-              if [ "${BASE_VER}" = "v${TODAY}.01" ]; then
-                NEW_TAG="v${TODAY}.01-beta$((BETA_NUM + 1))"
-              else
-                LAST_NUM=$(echo "${BASE_VER}" | cut -d '.' -f 4)
-                NEW_NUM=$(printf "%02d" $((10#${LAST_NUM} + 1)))
-                NEW_TAG="v${TODAY}.${NEW_NUM}-beta1"
-              fi
-            fi
-          fi
-          echo "New tag: ${NEW_TAG}"
-          echo "new_tag=${NEW_TAG}" >> $GITHUB_OUTPUT
 
       - name: Create Release
         uses: softprops/action-gh-release@6cbd405e2c4e67a21c47fa9e383d020e4e28b836 # v2.3.3
