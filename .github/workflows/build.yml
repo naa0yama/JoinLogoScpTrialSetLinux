@@ -2,25 +2,23 @@
 name: Builds
 
 on:
-  # Even if you tag a release when you create it, push.tag doesn't work.
-  # You should use release types: [published].
-  # push:
-  #   tags:
-  #     - 'v*'
   pull_request:
     branches:
       - main
-    types:
-      - closed
-      - opened
-      - reopened
-      - synchronize
-      - auto_merge_enabled
-  release:
-    types:
-      - published
+    paths:
+      - ".github/workflows/build.yml"
+      - "modules/**"
+      - "scripts/**"
+      - "Dockerfile.ubuntu2404"
   workflow_dispatch:
     inputs:
+      type:
+        description: "Release type"
+        required: true
+        type: choice
+        options:
+          - "release"
+          - "beta"
       rebuild:
         description: "Re build container?"
         required: true
@@ -124,30 +122,28 @@ jobs:
         if: ${{ github.event.pull_request.merged == true }}
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
-          script: |+
-            const __prereleases = await github.rest.repos.listReleases({
+          script: |
+            const releases = await github.rest.repos.listReleases({
               owner: context.repo.owner,
               repo: context.repo.repo,
               per_page: 100,
             });
-            const prereleases = __prereleases.data
 
-            for (const index in prereleases) {
-              if (prereleases[index].prerelease == true || prereleases[index].draft == true) {
-                console.log('delete pre-release & draft ' + prereleases[index]['id'] + '\t' + prereleases[index]['name'])
-
+            for (const release of releases.data) {
+              if (release.draft == true && release.prerelease == true) {
+                console.log('Deleting draft beta release: ' + release.id + '\t' + release.name);
                 await github.rest.repos.deleteRelease({
                   owner: context.repo.owner,
                   repo: context.repo.repo,
-                  release_id: prereleases[index]['id'],
+                  release_id: release.id,
                 });
               }
             }
 
-            console.log('end run')
+            console.log('Cleanup completed');
 
-      - name: Generate new pre-release tag
-        if: ${{ github.event.pull_request.merged == true }}
+      - name: Generate new tag
+        if: ${{ inputs.type != '' }}
         id: new_tag
         run: |
           set -euo pipefail
@@ -155,34 +151,67 @@ jobs:
           TODAY=$(date +'%y.%m.%d')
           echo "Today's date: ${TODAY}"
 
-          MATCHED_TAGS=$(git tag --sort=creatordate | grep -E "^v[0-9]{2}\.[0-9]{2}\.[0-9]{2}-beta[0-9]+$")
-          echo "Matched pre-release tags:"
-          echo "${MATCHED_TAGS}"
+          if [ "${{ inputs.type }}" = "release" ]; then
+            # Release tag: vYY.MM.DD.XX
+            MATCHED_TAGS=$(git tag --sort=creatordate | grep -E "^v[0-9]{2}\.[0-9]{2}\.[0-9]{2}\.[0-9]{2}$" || true)
+            echo "Matched release tags:"
+            echo "${MATCHED_TAGS}"
 
-          PRE_TAG=$(echo "${MATCHED_TAGS}" | tail -n 1)
-          echo "Latest pre-release tag: ${PRE_TAG}"
+            LATEST_TAG=$(echo "${MATCHED_TAGS}" | grep "^v${TODAY}\." | tail -n 1 || true)
+            echo "Latest release tag for today: ${LATEST_TAG}"
 
-          if [ "${PRE_TAG}" = "" ]; then
-            NEW_TAG="v${TODAY}-beta1"
-          else
-            PRE_TAG_DATE=$(echo "${PRE_TAG}" | cut -d '-' -f 1)
-            if [ "$PRE_TAG_DATE" = "v${TODAY}" ]; then
-              PRE_TAG_VERSION=$(echo "${PRE_TAG}" | cut -d '-' -f 2 | sed 's/beta//g')
-              NEW_TAG="v${TODAY}-beta$((PRE_TAG_VERSION + 1))"
+            if [ "${LATEST_TAG}" = "" ]; then
+              NEW_TAG="v${TODAY}.01"
             else
-              NEW_TAG="v${TODAY}-beta1"
+              LAST_NUM=$(echo "${LATEST_TAG}" | cut -d '.' -f 4)
+              NEW_NUM=$(printf "%02d" $((10#${LAST_NUM} + 1)))
+              NEW_TAG="v${TODAY}.${NEW_NUM}"
+            fi
+          else
+            # Beta tag: vYY.MM.DD.XX-betaX
+            MATCHED_TAGS=$(git tag --sort=creatordate | grep -E "^v[0-9]{2}\.[0-9]{2}\.[0-9]{2}\.[0-9]{2}-beta[0-9]+$" || true)
+            echo "Matched beta tags:"
+            echo "${MATCHED_TAGS}"
+
+            LATEST_TAG=$(echo "${MATCHED_TAGS}" | grep "^v${TODAY}\." | tail -n 1 || true)
+            echo "Latest beta tag for today: ${LATEST_TAG}"
+
+            if [ "${LATEST_TAG}" = "" ]; then
+              NEW_TAG="v${TODAY}.01-beta1"
+            else
+              BASE_VER=$(echo "${LATEST_TAG}" | cut -d '-' -f 1)
+              BETA_NUM=$(echo "${LATEST_TAG}" | cut -d '-' -f 2 | sed 's/beta//g')
+
+              if [ "${BASE_VER}" = "v${TODAY}.01" ]; then
+                NEW_TAG="v${TODAY}.01-beta$((BETA_NUM + 1))"
+              else
+                LAST_NUM=$(echo "${BASE_VER}" | cut -d '.' -f 4)
+                NEW_NUM=$(printf "%02d" $((10#${LAST_NUM} + 1)))
+                NEW_TAG="v${TODAY}.${NEW_NUM}-beta1"
+              fi
             fi
           fi
           echo "New tag: ${NEW_TAG}"
           echo "new_tag=${NEW_TAG}" >> $GITHUB_OUTPUT
 
-      - name: Pre-Release
-        uses: softprops/action-gh-release@6cbd405e2c4e67a21c47fa9e383d020e4e28b836 # v2
-        if: ${{ github.event.pull_request.merged == true }}
+      - name: Create Release
+        uses: softprops/action-gh-release@6cbd405e2c4e67a21c47fa9e383d020e4e28b836 # v2.3.3
+        if: ${{ inputs.type == 'release' }}
         with:
           name: ${{ steps.new_tag.outputs.new_tag }}
           tag_name: ${{ steps.new_tag.outputs.new_tag }}
           generate_release_notes: true
-          draft: true
+          draft: false
           prerelease: false
-          make_latest: ${{ env.MAKE_LATEST }}
+          make_latest: true
+
+      - name: Create Beta Release
+        uses: softprops/action-gh-release@6cbd405e2c4e67a21c47fa9e383d020e4e28b836 # v2.3.3
+        if: ${{ inputs.type == 'beta' }}
+        with:
+          name: ${{ steps.new_tag.outputs.new_tag }}
+          tag_name: ${{ steps.new_tag.outputs.new_tag }}
+          generate_release_notes: true
+          draft: false
+          prerelease: true
+          make_latest: false
