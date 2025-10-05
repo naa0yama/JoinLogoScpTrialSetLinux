@@ -192,8 +192,6 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           no-cache: ${{ inputs.no-cache == true }}
-          provenance: mode=max
-          sbom: true
           build-args: |
             CONTAINER_IMAGE=${{ steps.output_tag.outputs.image_tag }}
 
