@@ -31,7 +31,7 @@ logger() {
 	if [[ "${color}" == "none" ]]; then
 		echo -e "${message}"
 	else
-		echo -e "${COLORS[$color]} ${message}${COLORS[reset]}"
+		echo -e "${COLORS[$color]}${message}${COLORS[reset]}"
 	fi
 
 	# Output to log file without color
@@ -61,6 +61,8 @@ logger "## Report test_jlse."
 logger "## - versions:"
 logger "$(jq -r '
 		{
+			"container_image",
+			"ffmpeg",
 			"ffmpeg-jlstsl",
 			"libavisynth",
 			"liblsmash-url",

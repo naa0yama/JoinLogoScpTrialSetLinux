@@ -1,0 +1,106 @@
+---
+name: Cleanup
+
+on:
+  release:
+    types:
+      - published
+  pull_request:
+    branches:
+      - main
+    types:
+      - closed
+  schedule:
+    # 毎日午前3時(JST)に実行
+    - cron: "0 18 * * *"
+  workflow_dispatch:
+    inputs:
+      purge-cache:
+        description: "Purge all GitHub Actions cache"
+        default: false
+        required: false
+        type: boolean
+
+permissions: {}
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ startsWith(github.ref, 'refs/pull/') }}
+
+jobs:
+  cleanup-pr-cache:
+    name: Cleanup PR cache
+    runs-on: ubuntu-24.04
+    if: ${{ github.event_name == 'pull_request' }}
+    permissions:
+      actions: write
+    env:
+      TZ: "Asia/Tokyo"
+
+    steps:
+      - name: Cleanup PR branch cache
+        run: |
+          set -euo pipefail
+
+          gh extension install actions/gh-actions-cache
+
+          echo "Fetching list of cache key for branch: ${BRANCH}"
+          cacheKeysForPR=$(gh actions-cache list -R "${REPO}" -B "${BRANCH}" | cut -f 1 )
+
+          # Setting this to not fail the workflow while deleting cache keys.
+          set +e
+          echo "Deleting caches..."
+          for cacheKey in $cacheKeysForPR
+          do
+            echo "Deleting cacheKey... ${cacheKey}"
+            gh actions-cache delete "${cacheKey}" -R "${REPO}" -B "${BRANCH}" --confirm
+          done
+          echo "Done"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          BRANCH: ${{ github.head_ref || github.ref_name }}
+
+  purge-all-cache:
+    name: Purge all GitHub Actions cache
+    runs-on: ubuntu-24.04
+    if: ${{ inputs.purge-cache == true }}
+    permissions:
+      actions: write
+    env:
+      TZ: "Asia/Tokyo"
+
+    steps:
+      - name: Purge all caches
+        run: |
+          set -euo pipefail
+
+          echo "Listing all caches..."
+          gh api \
+            -H "Accept: application/vnd.github+json" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "/repos/${{ github.repository }}/actions/caches" \
+            --paginate \
+            | jq -r '.actions_caches[] | "\(.id)\t\(.key)\t\(.size_in_bytes)"'
+
+          echo ""
+          echo "Deleting all caches..."
+
+          gh api \
+            -H "Accept: application/vnd.github+json" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "/repos/${{ github.repository }}/actions/caches" \
+            --paginate \
+            | jq -r '.actions_caches[].id' \
+            | while read -r cache_id; do
+              echo "Deleting cache ID: ${cache_id}"
+              gh api \
+                --method DELETE \
+                -H "Accept: application/vnd.github+json" \
+                -H "X-GitHub-Api-Version: 2022-11-28" \
+                "/repos/${{ github.repository }}/actions/caches/${cache_id}" || true
+            done
+
+          echo "Cache purge completed"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -92,7 +92,10 @@ RUN echo "**** Create directory ****" && \
 	"${PREFIX}/lib" "${PREFIX}/lib/pkgconfig" "${PREFIX}/src" && \
 	echo "{}" > "${PREFIX}/versions.json"
 
-RUN echo "**** Dependencies | base ****" && \
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+	--mount=type=cache,target=/var/lib/apt,sharing=locked \
+	\
+	echo "**** Dependencies | base ****" && \
 	set -euxo pipefail && \
 	apt-get update && \
 	apt-get -y upgrade && \
@@ -108,17 +111,13 @@ RUN echo "**** Dependencies | base ****" && \
 	fontconfig \
 	grep \
 	jq \
-	mawk \
-	&& \
-	\
-	# Cleanup \
-	apt-get -y autoremove && \
-	apt-get -y clean && \
-	rm -rf /var/lib/apt/lists/*
+	mawk
 
-RUN echo "**** Dependencies | tsduck ****" && \
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+	--mount=type=cache,target=/var/lib/apt,sharing=locked \
+	\
+	echo "**** Dependencies | tsduck ****" && \
 	set -euxo pipefail && \
-	apt-get update && \
 	_tsduckdownload_url="$(curl ${CURL_OPTS} -H "User-Agent: builder/1.0" -sfSL https://api.github.com/repos/tsduck/tsduck/releases/latest | \
 	jq -r '.assets[] | select(.name | startswith("tsduck_") and endswith("ubuntu24_amd64.deb")) | .browser_download_url')" && \
 	_tsduck_filename="$(basename "$_tsduckdownload_url")" && \
@@ -128,35 +127,28 @@ RUN echo "**** Dependencies | tsduck ****" && \
 	tsp --version && \
 	rm -rf "./${_tsduck_filename}"
 
-RUN echo "**** Dependencies | FFmpeg runtime ****" && \
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+	--mount=type=cache,target=/var/lib/apt,sharing=locked \
+	\
+	echo "**** Dependencies | FFmpeg runtime ****" && \
 	set -euxo pipefail && \
-	apt-get update && \
-	apt-get -y upgrade && \
 	apt-get -y install --no-install-recommends \
 	# DRM and mp3lame
 	libdrm2 libmp3lame0 \
 	# FFmpeg filter drawtext
 	fonts-ubuntu libharfbuzz0b libfribidi0 \
 	# tsdivider
-	libboost-program-options1.83.0 libboost-filesystem1.83.0 \
-	&& \
-	\
-	# Cleanup \
-	apt-get -y autoremove && \
-	apt-get -y clean && \
-	rm -rf /var/lib/apt/lists/*
+	libboost-program-options1.83.0 libboost-filesystem1.83.0
 
-RUN echo "**** Nodejs | setup ****" && \
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+	--mount=type=cache,target=/var/lib/apt,sharing=locked \
+	\
+	echo "**** Nodejs | setup ****" && \
 	set -euxo pipefail && \
 	curl ${CURL_OPTS} "https://deb.nodesource.com/setup_${NODE_VERSION}.x" | bash - && \
 	apt-get update && \
 	apt-get install -y --no-install-recommends \
-	nodejs &&\
-	\
-	# Cleanup \
-	apt-get -y autoremove && \
-	apt-get -y clean && \
-	rm -rf /var/lib/apt/lists/*
+	nodejs
 
 RUN  echo "**** Nodejs | checking ****" && \
 	set -euxo pipefail && \
@@ -196,7 +188,10 @@ ARG DEBIAN_FRONTEND
 ARG PREFIX
 ARG PYTHONUNBUFFERED
 
-RUN echo "**** Build Dependencies ****" && \
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+	--mount=type=cache,target=/var/lib/apt,sharing=locked \
+	\
+	echo "**** Build Dependencies ****" && \
 	set -eux && \
 	apt-get update && \
 	apt-get -y install --no-install-recommends \
@@ -217,30 +212,20 @@ RUN echo "**** Build Dependencies ****" && \
 	texinfo \
 	xxd \
 	yasm \
-	zlib1g-dev \
-	&& \
-	\
-	# Cleanup \
-	apt-get -y autoremove && \
-	apt-get -y clean && \
-	rm -rf /var/lib/apt/lists/*
+	zlib1g-dev
 
-RUN echo "**** Build Dependencies | FFmpeg ****" && \
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+	--mount=type=cache,target=/var/lib/apt,sharing=locked \
+	\
+	echo "**** Build Dependencies | FFmpeg ****" && \
 	set -euxo pipefail && \
-	apt-get update && \
 	apt-get -y install --no-install-recommends \
 	# DRM and mp3lame
 	libdrm-dev libmp3lame-dev \
 	# FFmpeg filter drawtext
 	libfontconfig1 libfreetype6 libfribidi-dev libharfbuzz-dev \
 	# libaribcaption and libfreetype
-	libfontconfig-dev libfreetype-dev \
-	&& \
-	\
-	# Cleanup \
-	apt-get -y autoremove && \
-	apt-get -y clean && \
-	rm -rf /var/lib/apt/lists/*
+	libfontconfig-dev libfreetype-dev
 
 RUN echo "**** versions.json write ****" && \
 	set -euxo pipefail && \
@@ -1056,19 +1041,16 @@ RUN echo "**** JLSTSL | L-SMASH-Works | check ****" && \
 
 COPY						modules											"${PREFIX}-src/JLSTSL/modules"
 
-RUN echo "**** Dependencies | JLSTSL runtime ****" && \
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+	--mount=type=cache,target=/var/lib/apt,sharing=locked \
+	\
+	echo "**** Dependencies | JLSTSL runtime ****" && \
 	set -euxo pipefail && \
 	apt-get update && \
 	apt-get -y install --no-install-recommends \
 	libboost-filesystem1.83-dev \
 	libboost-program-options1.83-dev \
-	libboost-system1.83-dev \
-	&& \
-	\
-	# Cleanup \
-	apt-get -y autoremove && \
-	apt-get -y clean && \
-	rm -rf /var/lib/apt/lists/*
+	libboost-system1.83-dev
 
 ARG _JLSTLDIR="${PREFIX}-src/JLSTSL/modules/join_logo_scp_trial"
 ARG _BINDIR="${PREFIX}-src/JLSTSL/modules/join_logo_scp_trial"
@@ -1129,7 +1111,9 @@ RUN echo "**** JLSTSL | delogo ****" && \
 	\
 	check_static "${PREFIX}/lib/avisynth/libdelogo.so" strict
 
-RUN echo "**** JLSTSL | join_logo_scp_trial ****" && \
+RUN --mount=type=cache,target=/root/.npm \
+	\
+	echo "**** JLSTSL | join_logo_scp_trial ****" && \
 	set -euxo pipefail && \
 	cd "${PREFIX}-src/JLSTSL/modules/join_logo_scp_trial" && \
 	node -v && \
@@ -1166,6 +1150,7 @@ ARG DEBCONF_NOWARNINGS
 ARG DEBIAN_FRONTEND
 ARG PREFIX
 ARG PYTHONUNBUFFERED
+ARG CONTAINER_IMAGE="unknown_or_local_build"
 
 #- -----------------------------------------------------------------------------
 #- FFmpeg
@@ -1184,7 +1169,7 @@ COPY --from=build-jlstsl	"${PREFIX}/lib/avisynth/libshibatch.so"			"${PREFIX}/li
 
 RUN echo "**** FFmpeg | versions.json ****" && \
 	set -euxo pipefail && \
-	jq -s 'add | to_entries | sort_by(.key) | from_entries' \
+	jq -s 'add | . + {"container_image": env.CONTAINER_IMAGE} | to_entries | sort_by(.key) | from_entries' \
 	${PREFIX}/versions_*.json > "${PREFIX}/versions.json"
 
 RUN echo "**** FFmpeg | check exec ****" && \
