@@ -198,7 +198,6 @@ jobs:
   test:
     name: Test(${{ matrix.type }})
     needs: builds
-    if: ${{ github.event.pull_request.merged == true || inputs.type != '' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     strategy:
