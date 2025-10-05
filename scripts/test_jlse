@@ -62,6 +62,7 @@ logger "## - versions:"
 logger "$(jq -r '
 		{
 			"container_image",
+			"ffmpeg",
 			"ffmpeg-jlstsl",
 			"libavisynth",
 			"liblsmash-url",
