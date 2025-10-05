@@ -158,8 +158,8 @@ jobs:
           tags: |
             type=ref,event=tag,prefix=,enable=true
 
-            # minimal (short sha) - only for PR
-            type=sha,enable=${{ github.event.pull_request.merged != true && inputs.type == '' }},prefix=,format=short
+            # PR number with sha tag - only for PR
+            type=sha,enable=${{ github.event.pull_request.merged != true && inputs.type == '' }},prefix=pull${{ github.event.pull_request.number }}-,format=short
 
             # workflow_dispatch or PR merged tag
             type=raw,value=${{ steps.new_tag.outputs.new_tag }},enable=${{ github.event.pull_request.merged == true || inputs.type != '' }}
@@ -185,8 +185,7 @@ jobs:
         with:
           context: .
           file: Dockerfile.${{ matrix.type }}
-          push: ${{ github.event.pull_request.merged == true || inputs.type != '' }}
-          load: ${{ github.event.pull_request.merged != true && inputs.type == '' }}
+          push: true
           cache-from: type=gha
           cache-to: type=gha,mode=max
           tags: ${{ steps.meta.outputs.tags }}
@@ -198,7 +197,6 @@ jobs:
   test:
     name: Test(${{ matrix.type }})
     needs: builds
-    if: ${{ github.event.pull_request.merged == true || inputs.type != '' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     strategy:
@@ -253,6 +251,72 @@ jobs:
 
           # Exit with error if test failed
           exit $BUILD_EXIT_CODE
+
+  cleanup:
+    name: Cleanup PR images
+    needs: [builds, test]
+    if: ${{ always() && github.event_name == 'pull_request' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      packages: write
+    env:
+      TZ: "Asia/Tokyo"
+
+    steps:
+      - name: Delete PR container images
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8.0.0
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const prNumber = "${{ github.event.pull_request.number }}";
+            const packageName = "join_logo_scp_trial";
+            const tagPrefix = `pull${prNumber}-`;
+
+            console.log('Deleting all images for PR #' + prNumber);
+            console.log('Tag prefix: ' + tagPrefix);
+
+            try {
+              // Get all package versions
+              const versions = await github.rest.packages.getAllPackageVersionsForPackageOwnedByOrg({
+                package_type: 'container',
+                package_name: packageName,
+                org: context.repo.owner,
+                per_page: 100,
+              });
+
+              console.log('Found ' + versions.data.length + ' package versions');
+
+              let deletedCount = 0;
+
+              // Find and delete all versions with tags starting with the PR prefix
+              for (const version of versions.data) {
+                const tags = version.metadata.container.tags;
+                console.log('Checking version ' + version.id + ' with tags: ' + JSON.stringify(tags));
+
+                // Check if any tag starts with the PR prefix
+                const hasPRTag = tags.some(tag => tag.startsWith(tagPrefix));
+
+                if (hasPRTag) {
+                  console.log('Deleting package version: ' + version.id + ' with tags: ' + JSON.stringify(tags));
+
+                  await github.rest.packages.deletePackageVersionForOrg({
+                    package_type: 'container',
+                    package_name: packageName,
+                    org: context.repo.owner,
+                    package_version_id: version.id,
+                  });
+
+                  console.log('Successfully deleted package version');
+                  deletedCount++;
+                }
+              }
+
+              console.log(`Cleanup complete. Deleted ${deletedCount} image(s) for PR #${prNumber}`);
+            } catch (error) {
+              console.log('Error during cleanup: ' + error.message);
+              // Don't fail the workflow if cleanup fails
+            }
 
   release:
     name: Create Release
