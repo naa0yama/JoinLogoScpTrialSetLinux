@@ -195,7 +195,7 @@ jobs:
           provenance: mode=max
           sbom: true
           build-args: |
-            CONTAINER_TAG=${{ steps.output_tag.outputs.image_tag }}
+            CONTAINER_IMAGE=${{ steps.output_tag.outputs.image_tag }}
 
   test:
     name: Test(${{ matrix.type }})
