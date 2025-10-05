@@ -75,7 +75,9 @@ jobs:
           set -euo pipefail
 
           TODAY=$(date +'%y.%m.%d')
+          YEAR_MONTH=$(date +'%y.%m')
           echo "Today's date: ${TODAY}"
+          echo "Year-Month: ${YEAR_MONTH}"
 
           # PR merged = beta, workflow_dispatch = user choice
           RELEASE_TYPE="${{ inputs.type }}"
@@ -100,26 +102,46 @@ jobs:
               NEW_TAG="v${TODAY}.${NEW_NUM}"
             fi
           else
-            # Beta tag: vYY.MM.DD.XX-betaX
-            MATCHED_TAGS=$(git tag --sort=creatordate | grep -E "^v[0-9]{2}\.[0-9]{2}\.[0-9]{2}\.[0-9]{2}-beta[0-9]+$" || true)
-            echo "Matched beta tags:"
-            echo "${MATCHED_TAGS}"
+            # Beta tag: vYY.MM.00-betaX
+            ALL_TAGS=$(git tag --sort=-version:refname)
+            LATEST_RELEASE=$(echo "${ALL_TAGS}" | grep -E "^v[0-9]{2}\.[0-9]{2}\.[0-9]{2}\.[0-9]{2}$" | head -n 1 || true)
+            LATEST_BETA=$(echo "${ALL_TAGS}" | grep -E "^v[0-9]{2}\.[0-9]{2}\.00-beta[0-9]+$" | head -n 1 || true)
 
-            LATEST_TAG=$(echo "${MATCHED_TAGS}" | grep "^v${TODAY}\." | tail -n 1 || true)
-            echo "Latest beta tag for today: ${LATEST_TAG}"
+            echo "Latest release: ${LATEST_RELEASE}"
+            echo "Latest beta: ${LATEST_BETA}"
 
-            if [ "${LATEST_TAG}" = "" ]; then
-              NEW_TAG="v${TODAY}.01-beta1"
-            else
-              BASE_VER=$(echo "${LATEST_TAG}" | cut -d '-' -f 1)
-              BETA_NUM=$(echo "${LATEST_TAG}" | cut -d '-' -f 2 | sed 's/beta//g')
+            # Check if there are any tags between latest release and now
+            if [ "${LATEST_RELEASE}" != "" ]; then
+              # Get all tags after the latest release
+              TAGS_AFTER_RELEASE=$(git tag --sort=creatordate | sed -n "/^${LATEST_RELEASE}$/,\$p" | tail -n +2)
+              echo "Tags after latest release:"
+              echo "${TAGS_AFTER_RELEASE}"
 
-              if [ "${BASE_VER}" = "v${TODAY}.01" ]; then
-                NEW_TAG="v${TODAY}.01-beta$((BETA_NUM + 1))"
+              # Check if all tags after release are beta tags
+              NON_BETA_COUNT=$(echo "${TAGS_AFTER_RELEASE}" | grep -v -E "^v[0-9]{2}\.[0-9]{2}\.00-beta[0-9]+$" | grep -c . || true)
+
+              if [ "${NON_BETA_COUNT}" = "0" ] && [ "${LATEST_BETA}" != "" ]; then
+                # All tags after latest release are beta - increment the latest beta
+                BETA_BASE=$(echo "${LATEST_BETA}" | cut -d '-' -f 1)
+                BETA_NUM=$(echo "${LATEST_BETA}" | cut -d '-' -f 2 | sed 's/beta//g')
+                NEW_TAG="${BETA_BASE}-beta$((BETA_NUM + 1))"
+                echo "All tags after release are beta, incrementing: ${LATEST_BETA} -> ${NEW_TAG}"
               else
-                LAST_NUM=$(echo "${BASE_VER}" | cut -d '.' -f 4)
-                NEW_NUM=$(printf "%02d" $((10#${LAST_NUM} + 1)))
-                NEW_TAG="v${TODAY}.${NEW_NUM}-beta1"
+                # There's a non-beta tag or no beta exists - create new beta for this month
+                NEW_TAG="v${YEAR_MONTH}.00-beta1"
+                echo "Creating new beta for this month: ${NEW_TAG}"
+              fi
+            else
+              # No release tag exists - create new beta for this month
+              if [ "${LATEST_BETA}" != "" ]; then
+                # Increment existing beta
+                BETA_BASE=$(echo "${LATEST_BETA}" | cut -d '-' -f 1)
+                BETA_NUM=$(echo "${LATEST_BETA}" | cut -d '-' -f 2 | sed 's/beta//g')
+                NEW_TAG="${BETA_BASE}-beta$((BETA_NUM + 1))"
+                echo "No release exists, incrementing beta: ${LATEST_BETA} -> ${NEW_TAG}"
+              else
+                NEW_TAG="v${YEAR_MONTH}.00-beta1"
+                echo "No tags exist, creating first beta: ${NEW_TAG}"
               fi
             fi
           fi
@@ -244,6 +266,61 @@ jobs:
       TZ: "Asia/Tokyo"
 
     steps:
+      - name: Checkout from repository
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        with:
+          fetch-depth: 0
+
+      - name: Get latest release tag
+        id: latest_release
+        run: |
+          LATEST_TAG=$(git tag --sort=-version:refname | grep -E "^v[0-9]{2}\.[0-9]{2}\.[0-9]{2}\.[0-9]{2}$" | head -n1 || echo "")
+          echo "latest_tag=${LATEST_TAG}" >> $GITHUB_OUTPUT
+          echo "Latest release tag: ${LATEST_TAG}"
+
+      - name: Cleanup old beta releases
+        if: ${{ github.event.pull_request.merged == true || inputs.type == 'beta' }}
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8.0.0
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const releases = await github.rest.repos.listReleases({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              per_page: 100,
+            });
+
+            const newTag = "${{ needs.builds.outputs.new_tag }}";
+            const baseVersion = newTag.split('-')[0]; // v25.10.00 (could be previous month)
+
+            console.log('New tag: ' + newTag);
+            console.log('Base version: ' + baseVersion);
+
+            for (const release of releases.data) {
+              // Delete beta releases with same base version (but not the new one)
+              if (release.prerelease &&
+                  release.tag_name.startsWith(baseVersion + '-beta') &&
+                  release.tag_name !== newTag) {
+                console.log('Deleting old beta release: ' + release.tag_name);
+                await github.rest.repos.deleteRelease({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  release_id: release.id,
+                });
+                // Delete the tag too
+                try {
+                  await github.rest.git.deleteRef({
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    ref: 'tags/' + release.tag_name,
+                  });
+                  console.log('Deleted tag: ' + release.tag_name);
+                } catch (error) {
+                  console.log('Could not delete tag: ' + release.tag_name);
+                }
+              }
+            }
+
       - name: Create Release
         uses: softprops/action-gh-release@6cbd405e2c4e67a21c47fa9e383d020e4e28b836 # v2.3.3
         if: ${{ inputs.type == 'release' }}
@@ -256,12 +333,29 @@ jobs:
           make_latest: true
 
       - name: Create Beta Release
-        uses: softprops/action-gh-release@6cbd405e2c4e67a21c47fa9e383d020e4e28b836 # v2.3.3
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8.0.0
         if: ${{ github.event.pull_request.merged == true || inputs.type == 'beta' }}
         with:
-          name: ${{ needs.builds.outputs.new_tag }}
-          tag_name: ${{ needs.builds.outputs.new_tag }}
-          generate_release_notes: true
-          draft: false
-          prerelease: true
-          make_latest: false
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const newTag = "${{ needs.builds.outputs.new_tag }}";
+            const latestTag = "${{ steps.latest_release.outputs.latest_tag }}";
+
+            const releaseParams = {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              tag_name: newTag,
+              name: newTag,
+              draft: false,
+              prerelease: true,
+              make_latest: 'false',
+              generate_release_notes: true,
+            };
+
+            // If there's a latest release tag, use it as previous tag
+            if (latestTag) {
+              releaseParams.previous_tag_name = latestTag;
+            }
+
+            const release = await github.rest.repos.createRelease(releaseParams);
+            console.log('Created beta release: ' + release.data.html_url);
