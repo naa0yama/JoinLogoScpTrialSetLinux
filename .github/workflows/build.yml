@@ -42,7 +42,7 @@ permissions: {}
 
 jobs:
   builds:
-    name: Container ${{ matrix.type }}
+    name: Container(${{ matrix.type }})
     runs-on: ubuntu-24.04
     timeout-minutes: 90
     strategy:
@@ -174,7 +174,7 @@ jobs:
           echo "image_tag=${IMAGE_TAG}" >> $GITHUB_OUTPUT
 
   test:
-    name: Test ${{ matrix.type }}
+    name: Test(${{ matrix.type }})
     needs: builds
     if: ${{ github.event.pull_request.merged == true || inputs.type != '' }}
     runs-on: ubuntu-24.04
