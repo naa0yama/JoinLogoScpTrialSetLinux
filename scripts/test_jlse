@@ -61,6 +61,7 @@ logger "## Report test_jlse."
 logger "## - versions:"
 logger "$(jq -r '
 		{
+			"container_image",
 			"ffmpeg-jlstsl",
 			"libavisynth",
 			"liblsmash-url",
