@@ -1,8 +1,12 @@
----
+# yaml-language-server: $schema=https://json.schemastore.org/github-workflow.json
 name: Builds
 
 on:
   pull_request:
+    types:
+      - opened
+      - synchronize
+      - closed
     branches:
       - main
     paths:
@@ -62,7 +66,7 @@ jobs:
           fetch-depth: 0
 
       - name: Generate new tag
-        if: ${{ inputs.type != '' }}
+        if: ${{ github.event.pull_request.merged == true || inputs.type != '' }}
         id: new_tag
         run: |
           set -euo pipefail
@@ -70,7 +74,13 @@ jobs:
           TODAY=$(date +'%y.%m.%d')
           echo "Today's date: ${TODAY}"
 
-          if [ "${{ inputs.type }}" = "release" ]; then
+          # PR merged = beta, workflow_dispatch = user choice
+          RELEASE_TYPE="${{ inputs.type }}"
+          if [ "${{ github.event.pull_request.merged }}" = "true" ]; then
+            RELEASE_TYPE="beta"
+          fi
+
+          if [ "${RELEASE_TYPE}" = "release" ]; then
             # Release tag: vYY.MM.DD.XX
             MATCHED_TAGS=$(git tag --sort=creatordate | grep -E "^v[0-9]{2}\.[0-9]{2}\.[0-9]{2}\.[0-9]{2}$" || true)
             echo "Matched release tags:"
@@ -126,8 +136,8 @@ jobs:
             # minimal (short sha)
             type=sha,enable=true,prefix=,format=short
 
-            # workflow_dispatch tag
-            type=raw,value=${{ steps.new_tag.outputs.new_tag }},enable=${{ inputs.type != '' }}
+            # workflow_dispatch or PR merged tag
+            type=raw,value=${{ steps.new_tag.outputs.new_tag }},enable=${{ github.event.pull_request.merged == true || inputs.type != '' }}
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@e468171a9de216ec08956ac3ada2f0791b6bd435 # v3
@@ -144,7 +154,7 @@ jobs:
         with:
           context: .
           file: Dockerfile.${{ matrix.type }}
-          push: ${{ contains( github.event.pull_request.merged, true ) || inputs.rebuild == 'true' || github.event_name == 'release' }}
+          push: ${{ github.event.pull_request.merged == true || inputs.type != '' }}
           load: true
           cache-from: type=gha
           cache-to: type=gha,mode=max
@@ -175,31 +185,6 @@ jobs:
             echo "\`\`\`"
           } >> $GITHUB_STEP_SUMMARY
 
-      - name: Cleanup pre-releases
-        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8.0.0
-        if: ${{ github.event.pull_request.merged == true }}
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          script: |
-            const releases = await github.rest.repos.listReleases({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              per_page: 100,
-            });
-
-            for (const release of releases.data) {
-              if (release.draft == true && release.prerelease == true) {
-                console.log('Deleting draft beta release: ' + release.id + '\t' + release.name);
-                await github.rest.repos.deleteRelease({
-                  owner: context.repo.owner,
-                  repo: context.repo.repo,
-                  release_id: release.id,
-                });
-              }
-            }
-
-            console.log('Cleanup completed');
-
       - name: Create Release
         uses: softprops/action-gh-release@6cbd405e2c4e67a21c47fa9e383d020e4e28b836 # v2.3.3
         if: ${{ inputs.type == 'release' }}
@@ -213,7 +198,7 @@ jobs:
 
       - name: Create Beta Release
         uses: softprops/action-gh-release@6cbd405e2c4e67a21c47fa9e383d020e4e28b836 # v2.3.3
-        if: ${{ inputs.type == 'beta' }}
+        if: ${{ github.event.pull_request.merged == true || inputs.type == 'beta' }}
         with:
           name: ${{ steps.new_tag.outputs.new_tag }}
           tag_name: ${{ steps.new_tag.outputs.new_tag }}
