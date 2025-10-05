@@ -12,7 +12,7 @@ on:
       - closed
   schedule:
     # 毎日午前3時(JST)に実行
-    - cron: '0 18 * * *'
+    - cron: "0 18 * * *"
   workflow_dispatch:
     inputs:
       purge-cache:
@@ -28,23 +28,6 @@ concurrency:
   cancel-in-progress: ${{ startsWith(github.ref, 'refs/pull/') }}
 
 jobs:
-  cleanup-containers:
-    name: Cleanup containers
-    runs-on: ubuntu-24.04
-    permissions:
-      packages: write
-    env:
-      TZ: "Asia/Tokyo"
-
-    steps:
-      - name: Delete untagged containers
-        uses: actions/delete-package-versions@v5
-        with:
-          package-name: 'join_logo_scp_trial'
-          package-type: 'container'
-          min-versions-to-keep: 0
-          delete-only-untagged-versions: 'true'
-
   cleanup-pr-cache:
     name: Cleanup PR cache
     runs-on: ubuntu-24.04
