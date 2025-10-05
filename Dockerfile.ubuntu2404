@@ -1150,7 +1150,7 @@ ARG DEBCONF_NOWARNINGS
 ARG DEBIAN_FRONTEND
 ARG PREFIX
 ARG PYTHONUNBUFFERED
-ARG CONTAINER_IMAGE=""
+ARG CONTAINER_IMAGE="unknown_or_local_build"
 
 #- -----------------------------------------------------------------------------
 #- FFmpeg
