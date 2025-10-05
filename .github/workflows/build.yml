@@ -56,6 +56,9 @@ jobs:
       packages: write
     env:
       TZ: "Asia/Tokyo"
+    outputs:
+      new_tag: ${{ steps.new_tag.outputs.new_tag }}
+      image_tag: ${{ steps.output_tag.outputs.image_tag }}
 
     steps:
       - name: Checkout from repository
@@ -133,8 +136,8 @@ jobs:
           tags: |
             type=ref,event=tag,prefix=,enable=true
 
-            # minimal (short sha)
-            type=sha,enable=true,prefix=,format=short
+            # minimal (short sha) - only for PR
+            type=sha,enable=${{ github.event.pull_request.merged != true && inputs.type == '' }},prefix=,format=short
 
             # workflow_dispatch or PR merged tag
             type=raw,value=${{ steps.new_tag.outputs.new_tag }},enable=${{ github.event.pull_request.merged == true || inputs.type != '' }}
@@ -155,17 +158,58 @@ jobs:
           context: .
           file: Dockerfile.${{ matrix.type }}
           push: ${{ github.event.pull_request.merged == true || inputs.type != '' }}
-          load: true
+          load: ${{ github.event.pull_request.merged != true && inputs.type == '' }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           no-cache: ${{ inputs.no-cache == true }}
+          provenance: mode=max
+          sbom: true
+
+      - name: Output image tag
+        id: output_tag
+        run: |
+          IMAGE_TAG=$(echo "${{ steps.meta.outputs.tags }}" | head -n1)
+          echo "image_tag=${IMAGE_TAG}" >> $GITHUB_OUTPUT
+
+  test:
+    name: Test ${{ matrix.type }}
+    needs: builds
+    if: ${{ github.event.pull_request.merged == true || inputs.type != '' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        type:
+          - ubuntu2404
+    permissions:
+      contents: read
+      packages: read
+    env:
+      TZ: "Asia/Tokyo"
+
+    steps:
+      - name: Checkout from repository
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcb5dd907a8 # v5.0.0
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@184bdaa0721073962dff0199f1fb9940f07167d1 # v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Pull image for test
+        run: |
+          IMAGE_TAG="${{ needs.builds.outputs.image_tag }}"
+          docker pull "${IMAGE_TAG}"
 
       - name: jlse test
         run: |
           set -euxo pipefail
-          bash dev-build.sh --gh-action "${{ steps.meta.outputs.tags }}"
+          bash dev-build.sh --gh-action "${{ needs.builds.outputs.image_tag }}"
           BUILD_EXIT_CODE=$?
 
           if [ $BUILD_EXIT_CODE -eq 0 ]; then
@@ -185,12 +229,27 @@ jobs:
             echo "\`\`\`"
           } >> $GITHUB_STEP_SUMMARY
 
+          # Exit with error if test failed
+          exit $BUILD_EXIT_CODE
+
+  release:
+    name: Create Release
+    needs: [builds, test]
+    if: ${{ always() && needs.test.result == 'success' && (github.event.pull_request.merged == true || inputs.type != '') }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    env:
+      TZ: "Asia/Tokyo"
+
+    steps:
       - name: Create Release
         uses: softprops/action-gh-release@6cbd405e2c4e67a21c47fa9e383d020e4e28b836 # v2.3.3
         if: ${{ inputs.type == 'release' }}
         with:
-          name: ${{ steps.new_tag.outputs.new_tag }}
-          tag_name: ${{ steps.new_tag.outputs.new_tag }}
+          name: ${{ needs.builds.outputs.new_tag }}
+          tag_name: ${{ needs.builds.outputs.new_tag }}
           generate_release_notes: true
           draft: false
           prerelease: false
@@ -200,8 +259,8 @@ jobs:
         uses: softprops/action-gh-release@6cbd405e2c4e67a21c47fa9e383d020e4e28b836 # v2.3.3
         if: ${{ github.event.pull_request.merged == true || inputs.type == 'beta' }}
         with:
-          name: ${{ steps.new_tag.outputs.new_tag }}
-          tag_name: ${{ steps.new_tag.outputs.new_tag }}
+          name: ${{ needs.builds.outputs.new_tag }}
+          tag_name: ${{ needs.builds.outputs.new_tag }}
           generate_release_notes: true
           draft: false
           prerelease: true
