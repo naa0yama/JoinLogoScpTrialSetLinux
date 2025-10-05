@@ -39,7 +39,7 @@ ARG OPUS_VERSION=v1.5.2
 ## renovate: datasource=github-releases packageName=Netflix/vmaf versioning=semver
 ARG VMAF_VERSION=v3.0.0
 ## renovate: datasource=git-refs packageName=https://code.videolan.org/videolan/x264.git branch=stable versioning=git
-ARG X264_VERSION=31e19f92f00c7003fa115047ce50978bc98c3a0d
+ARG X264_VERSION=b35605ace3ddf7c1a5d67a2eb553f034aef41d55
 ## renovate: datasource=git-refs packageName=https://bitbucket.org/multicoreware/x265_git.git versioning=semver
 ARG X265_VERSION=4.0
 
