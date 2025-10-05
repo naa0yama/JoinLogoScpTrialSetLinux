@@ -1150,6 +1150,7 @@ ARG DEBCONF_NOWARNINGS
 ARG DEBIAN_FRONTEND
 ARG PREFIX
 ARG PYTHONUNBUFFERED
+ARG CONTAINER_TAG=""
 
 #- -----------------------------------------------------------------------------
 #- FFmpeg
@@ -1168,7 +1169,7 @@ COPY --from=build-jlstsl	"${PREFIX}/lib/avisynth/libshibatch.so"			"${PREFIX}/li
 
 RUN echo "**** FFmpeg | versions.json ****" && \
 	set -euxo pipefail && \
-	jq -s 'add | to_entries | sort_by(.key) | from_entries' \
+	jq -s 'add | . + {"container_tag": env.CONTAINER_TAG} | to_entries | sort_by(.key) | from_entries' \
 	${PREFIX}/versions_*.json > "${PREFIX}/versions.json"
 
 RUN echo "**** FFmpeg | check exec ****" && \
