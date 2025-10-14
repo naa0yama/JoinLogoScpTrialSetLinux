@@ -139,6 +139,7 @@ if [ "${DOCKER_SHELL}" == "yes" ]; then
 		-v $PWD/modules/join_logo_scp_trial/JL:/join_logo_scp_trial/JL \
 		-v $PWD/modules/join_logo_scp_trial/result:/join_logo_scp_trial/result \
 		-v $PWD/modules/join_logo_scp_trial/src:/join_logo_scp_trial/src \
+		--group-add video \
 		--device "/dev/dri:/dev/dri" \
 		"${IMAGE_NAME}" /bin/bash
 else
@@ -150,6 +151,7 @@ else
 		-v $PWD/modules/join_logo_scp_trial/JL:/join_logo_scp_trial/JL \
 		-v $PWD/modules/join_logo_scp_trial/result:/join_logo_scp_trial/result \
 		-v $PWD/modules/join_logo_scp_trial/src:/join_logo_scp_trial/src \
+		--group-add video \
 		--device "/dev/dri:/dev/dri" \
 		"${IMAGE_NAME}" test_jlse
 fi

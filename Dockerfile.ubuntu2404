@@ -14,12 +14,14 @@ ARG NODE_VERSION=18
 # Intel SDK
 ## renovate: datasource=github-tags packageName=intel/gmmlib versioning=semver
 ARG INTEL_GMMLIB_VERSION=intel-gmmlib-22.6.0
-## renovate: datasource=github-releases packageName=intel/media-driver
-ARG INTEL_MEDIA_DRIVER_VERSION=intel-media-24.3.4
+## renovate: datasource=github-releases packageName=intel/libva-utils
+ARG INTEL_LIBVA_UTILS_VERSION=2.22.0
 ## renovate: datasource=github-releases packageName=intel/libva versioning=semver
 ARG INTEL_LIBVA_VERSION=2.22.0
 ## renovate: datasource=github-tags packageName=intel/libvpl versioning=git
 ARG INTEL_LIBVPL_VERSION=v2.14.0
+## renovate: datasource=github-releases packageName=intel/media-driver
+ARG INTEL_MEDIA_DRIVER_VERSION=intel-media-24.3.4
 ## renovate: datasource=github-releases packageName=intel/vpl-gpu-rt
 ARG INTEL_VPL_GPU_RT_VERSION=intel-onevpl-24.3.4
 
@@ -83,6 +85,7 @@ ENV CPPFLAGS="-I${PREFIX}/include"
 ENV LD_LIBRARY_PATH="${PREFIX}/lib"
 ENV PKG_CONFIG_PATH="${PREFIX}/lib/pkgconfig"
 ENV PATH="${PREFIX}/bin:${PATH}"
+ENV LIBVA_DRIVERS_PATH="${PREFIX}/lib/dri"
 
 SHELL ["/bin/bash", "-c"]
 
@@ -270,9 +273,10 @@ ARG CFLAGS \
 
 # Intel
 ARG INTEL_GMMLIB_VERSION \
-	INTEL_MEDIA_DRIVER_VERSION \
+	INTEL_LIBVA_UTILS_VERSION \
 	INTEL_LIBVA_VERSION \
 	INTEL_LIBVPL_VERSION \
+	INTEL_MEDIA_DRIVER_VERSION \
 	INTEL_VPL_GPU_RT_VERSION
 
 # Copy tools from build-base stage
@@ -284,7 +288,7 @@ RUN echo "**** Intel QSV | libva ****" && \
 	git clone --depth 1 -b ${INTEL_LIBVA_VERSION} https://github.com/intel/libva.git && \
 	cd libva && \
 	./autogen.sh \
-	--disable-shared \
+	--enable-shared \
 	--enable-pic \
 	--enable-static \
 	--libdir="${PREFIX}/lib" \
@@ -296,10 +300,31 @@ RUN echo "**** Intel QSV | libva ****" && \
 	\
 	pkg-config --exists libva && \
 	check_static "${PREFIX}/lib/libva.a" permissive && \
+	check_static "${PREFIX}/lib/libva.so" permissive && \
 	pkg-config --exists libva-drm && \
 	check_static "${PREFIX}/lib/libva-drm.a" permissive && \
+	check_static "${PREFIX}/lib/libva-drm.so" permissive && \
 	cd "${PREFIX}" && \
 	mv -v libva "${PREFIX}-src"
+
+RUN echo "**** Intel QSV | libva-utils ****" && \
+	set -euxo pipefail && \
+	cd "${PREFIX}" && \
+	git clone --depth 1 -b ${INTEL_LIBVA_UTILS_VERSION} https://github.com/intel/libva-utils.git && \
+	cd libva-utils && \
+	./autogen.sh \
+	--enable-drm \
+	--disable-x11 \
+	--disable-wayland \
+	--prefix="${PREFIX}" \
+	&& \
+	make -j$(nproc) && \
+	make install && \
+	make clean && \
+	\
+	check_static "${PREFIX}/bin/vainfo" permissive && \
+	cd "${PREFIX}" && \
+	mv -v libva-utils "${PREFIX}-src"
 
 RUN echo "**** Intel QSV | gmmlib ****" && \
 	set -euxo pipefail && \
@@ -417,6 +442,7 @@ RUN echo "**** Intel QSV | versions.json write ****" && \
 	"libigfxcmrt": env.INTEL_MEDIA_DRIVER_VERSION, \
 	"libmfx-gen": env.INTEL_VPL_GPU_RT_VERSION, \
 	"libva-drm": env.INTEL_LIBVA_VERSION, \
+	"libva-utils": env.INTEL_LIBVA_UTILS_VERSION, \
 	"libva": env.INTEL_LIBVA_VERSION, \
 	"libvpl": env.INTEL_LIBVPL_VERSION, \
 	}' > "${PREFIX}/versions_qsv.json"
@@ -1155,7 +1181,7 @@ ARG CONTAINER_IMAGE="unknown_or_local_build"
 #- -----------------------------------------------------------------------------
 #- FFmpeg
 #-
-## FFmpeg
+## FFmpeg (includes Intel QSV Runtime Libraries)
 COPY --from=build-ffmpeg	"${PREFIX}"										"${PREFIX}"
 
 ## JLSTSL
@@ -1176,11 +1202,15 @@ RUN echo "**** FFmpeg | check exec ****" && \
 	set -euxo pipefail && \
 	ls -lah "${PREFIX}/lib" && \
 	ls -lah "${PREFIX}/lib/avisynth" && \
+	ls -lah "${PREFIX}/lib/dri" && \
 	ln -s "${PREFIX}/bin/ffprobe" "/usr/local/bin/ffprobe" && \
 	ln -s "${PREFIX}/bin/ffmpeg" "/usr/local/bin/ffmpeg" && \
+	ln -s "${PREFIX}/bin/vainfo" "/usr/local/bin/vainfo" && \
 	check_static "/usr/local/bin/ffprobe" && \
 	check_static "/usr/local/bin/ffmpeg" && \
-	ffmpeg -version
+	check_static "/usr/local/bin/vainfo" && \
+	ffmpeg -version && \
+	vainfo --version || true
 
 RUN echo  "**** FFmpeg | check library ****" && \
 	set -euxo pipefail && \
