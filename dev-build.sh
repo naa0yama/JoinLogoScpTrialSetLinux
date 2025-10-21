@@ -8,6 +8,7 @@ DOCKER_TAG="ubuntu2404"
 DOCKER_TARGET=""
 DOCKER_TTY="auto"
 GH_ACTION="no"
+INPUT=""
 
 # Parse arguments
 while [[ $# -gt 0 ]]; do
@@ -32,6 +33,10 @@ while [[ $# -gt 0 ]]; do
 			DOCKER_SHELL="yes"
 			shift
 			;;
+		--input)
+			INPUT="$2"
+			shift 2
+			;;
 		--gh-action)
 			GH_ACTION="yes"
 			# 複数のタグが改行区切りで渡される場合、最初のタグを使用
@@ -39,12 +44,13 @@ while [[ $# -gt 0 ]]; do
 			shift 2
 			;;
 		-h|--help)
-			echo "Usage: $0 [--tag TAG] [--target TARGET] [--root] [--tty auto|yes|no] [--shell] [--gh-action TAG]"
+			echo "Usage: $0 [--tag TAG] [--target TARGET] [--root] [--tty auto|yes|no] [--shell] [--input INPUT] [--gh-action TAG]"
 			echo "  --tag:          ubuntu2404 (default: ubuntu2404)"
 			echo "  --target:       Docker build target stage (optional)"
 			echo "  --root:         run as root user (default: no)"
 			echo "  --tty:          auto | yes | no (default: auto)"
 			echo "  --shell:        run in shell mode instead of executing default command"
+			echo "  --input:        input file path to pass as INPUT environment variable to container"
 			echo "  --gh-action:    GitHub Action mode - skip build, run docker execution only with specified tag(s)"
 			echo "                  If multiple tags are provided (newline-separated), uses the first one"
 			echo "    auto:         Automatically detects the presence of a TTY"
@@ -131,27 +137,42 @@ else
 	IMAGE_NAME="tmp-${DOCKER_TAG}"
 fi
 
+# INPUT環境変数の設定
+if [ -n "${INPUT}" ]; then
+	INPUT_ENV_OPT="-e INPUT=${INPUT}"
+else
+	INPUT_ENV_OPT=""
+fi
+
+# /dev/driデバイスの存在確認
+if [ -d "/dev/dri" ]; then
+	DRI_DEVICE_OPT="--group-add video --device /dev/dri:/dev/dri"
+else
+	DRI_DEVICE_OPT=""
+	echo "Warning: /dev/dri not found, hardware acceleration will be disabled"
+fi
+
 if [ "${DOCKER_SHELL}" == "yes" ]; then
 	# シェルモードで実行
 	time docker run ${DOCKER_OPTS} ${DOCKER_TTY_OPTS} --rm \
+		${INPUT_ENV_OPT} \
 		-v $PWD/videos/source:/source \
 		-v $PWD/modules/join_logo_scp_trial/logo:/join_logo_scp_trial/logo \
 		-v $PWD/modules/join_logo_scp_trial/JL:/join_logo_scp_trial/JL \
 		-v $PWD/modules/join_logo_scp_trial/result:/join_logo_scp_trial/result \
 		-v $PWD/modules/join_logo_scp_trial/src:/join_logo_scp_trial/src \
-		--group-add video \
-		--device "/dev/dri:/dev/dri" \
+		${DRI_DEVICE_OPT} \
 		"${IMAGE_NAME}" /bin/bash
 else
 	# デフォルトコマンドで実行
 	time docker run ${DOCKER_OPTS} ${DOCKER_TTY_OPTS} --rm \
 		-e LOG_FILE="/source/test_jlse.log" \
+		${INPUT_ENV_OPT} \
 		-v $PWD/videos/source:/source \
 		-v $PWD/modules/join_logo_scp_trial/logo:/join_logo_scp_trial/logo \
 		-v $PWD/modules/join_logo_scp_trial/JL:/join_logo_scp_trial/JL \
 		-v $PWD/modules/join_logo_scp_trial/result:/join_logo_scp_trial/result \
 		-v $PWD/modules/join_logo_scp_trial/src:/join_logo_scp_trial/src \
-		--group-add video \
-		--device "/dev/dri:/dev/dri" \
+		${DRI_DEVICE_OPT} \
 		"${IMAGE_NAME}" test_jlse
 fi
