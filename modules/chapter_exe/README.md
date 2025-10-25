@@ -1,7 +1,9 @@
 # chapter_exe for AviSynth+ 3.5.x & Linux
 ## 概要
 AviSynth+はVer3.5.0からNative Linuxをサポートした。  
-これは[sogaani氏][1]がLinuxに移植された[chapter_exe][2]をAvisynth+3.5.xで動作するように改造したもの。
+これは[sogaani氏][1]がLinuxに移植された[chapter_exe][2]を  
+Avisynth+3.5.xを使用するようにしたもの。  
+また、WindwosとLinuxの両環境にてビルドおよび使用できる。
 
 [1]:https://github.com/sogaani
 [2]:https://github.com/sogaani/JoinLogoScp/tree/master/chapter_exe
@@ -10,9 +12,9 @@ AviSynth+はVer3.5.0からNative Linuxをサポートした。
 無音検索＋シーンチェンジ(SC)検索を行い、無音・SC位置の情報を出力する。
 
 ## 使用方法
-AviSynth+3.5.xを導入の上srcでmakeしてください。  
-導入していないとmakeに失敗し、動作しません。  
-実行は次のとおりです。
+srcでmakeしてください。  
+ただし、AviSynth+3.5.xを導入していなければ動作しません。  
+実行方法は次のとおりです。
 ````
 chapter_exe -v "画像ソースファイル" -a "音声ソースファイル" -o "出力先txt" -m 無音閾値 -s 連続フレーム数
 ````
@@ -28,3 +30,12 @@ Linuxに移植されたsogaani氏
 に深く感謝いたします。
 
 [5]:https://github.com/rutice
+
+## メモ
+avs\_internalはx264 projectのavs.cから一部抜粋し微修正したものである。  
+
+ARM向けで使用しているsse2neonは下記のリポジトリのものである。  
+[DLTcollab/ss2neon][6]  
+
+[6]:https://github.com/DLTcollab/sse2neon
+
