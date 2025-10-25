@@ -1,73 +1,73 @@
 //
 // chapter_exe By ru
-//�@�قڂ��񂹂��΂�
+//　ほぼかんせいばん
 
-���T�v
+■概要
 
-�@chapter.auf�i���������{�V�[���`�F���W(SC)�����t���j�Ɠ����̌���������
-�@Aviutl���g�킸�ɏ�������v���O�����ł��B
+　chapter.auf（無音検索＋シーンチェンジ(SC)検索付き）と同等の検索処理を
+　Aviutlを使わずに処理するプログラムです。
 
-�@���́Favs�t�@�C���Awav�t�@�C���A���̑� *.aui �œǂݍ��߂�t�@�C��
-�@�@�@�@�i������FAW�f�R�[�h�Ή��F�ʓr�v���O�C���v�j
-�@�o�́Ftxt�t�@�C���i�����ESC�ʒu�̏�񂪓���j
+　入力：avsファイル、wavファイル、その他 *.aui で読み込めるファイル
+　　　　（音声はFAWデコード対応：別途プラグイン要）
+　出力：txtファイル（無音・SC位置の情報が入る）
 
-���g����
+■使い方
 
-�����F
-�@��{�I��avsinp.aui�̂���t�H���_��chapter_exe.exe��u���Ă��������B
-�@��avs�ȊO����̓��͂��o���܂��B���L�Q��
+準備：
+　基本的にavsinp.auiのあるフォルダにchapter_exe.exeを置いてください。
+　※avs以外からの入力も出来ます。下記参照
 
-�g���F
-�@bat�t�@�C���Ƃ�����A
-	chapter_exe.exe -v "�摜�\�[�X�t�@�C��" -a "�����\�[�X�t�@�C��" -o "�o�͐�txt" -m ����臒l -s �A���t���[����
-�@�̂悤�ɌĂяo���B�摜�������������\�[�X�̏ꍇ�� -a ���ȗ��\�B
-�@-m ���ȗ����� 50�A-s ���ȗ����� 10 �ƂȂ�B
+使う：
+　batファイルとかから、
+	chapter_exe.exe -v "画像ソースファイル" -a "音声ソースファイル" -o "出力先txt" -m 無音閾値 -s 連続フレーム数
+　のように呼び出す。画像を音声が同じソースの場合は -a を省略可能。
+　-m を省略時は 50、-s を省略時は 10 となる。
 
-�@��̓I�ɂ́A
+　具体的には、
 	chapter_exe.exe -v "C:\in.avs" -o "C:\out.txt" -m 100 -s 15
-�@����Ȋ����B���ꂼ��X�y�[�X�����ĂˁB
-�@��̐ݒ�̏ꍇ�A����臒l 100�A�����A���t���[���� 15 �ɂ�
-�@in.avs�̉������疳��������Ain.avs�̉f����SC�`�F�b�N���s���B
-�@���ʂ́Aout.txt ��chapter.auf�p�̃t�H�[�}�b�g�ŏo�͂����B
+　こんな感じ。それぞれスペースあけてね。
+　上の設定の場合、無音閾値 100、無音連続フレーム数 15 にて
+　in.avsの音声から無音検索後、in.avsの映像でSCチェックを行う。
+　結果は、out.txt にchapter.auf用のフォーマットで出力される。
 
-�@�ʂ̓��̓v���O�C�����g���ꍇ�́A���Ƃ��΃\�[�X�t�@�C������
+　別の入力プラグインを使う場合は、たとえばソースファイル名を
 	"mp4input.aui://C:\mp4movie.mp4"
-�@�Ƃ���΁Amp4input.aui���g����C:\mp4movie.mp4���J���܂��B�o����΃t���p�X�����B
+　とすれば、mp4input.auiを使ってC:\mp4movie.mp4を開きます。出来ればフルパス推奨。
 
-�@���̓v���O�C�����w�肵�Ȃ������ꍇ�́Aavs���邢��wav�Ƃ��ĊJ�����Ƃ��܂��B
+　入力プラグインを指定しなかった場合は、avsあるいはwavとして開こうとします。
 
-��FAW�̓��͂ɂ���
+■FAWの入力について
 
-�@�擪10�t���[������FAW�����o�����ꍇ�̓f�R�[�h���Ȃ��疳���������܂��B
-�@�f�R�[�h�ɂ� FAWPreview.auf ���K�v�Ȃ̂ŁA�����t�H���_�ɒu���Ă��������B
-�@�i�\�[�X�̏ꏊ�������ł��܂��j�@
+　先頭10フレームからFAWを検出した場合はデコードしながら無音検索します。
+　デコードには FAWPreview.auf が必要なので、同じフォルダに置いてください。
+　（ソースの場所から入手できます）　
 
-���\�[�X�R�[�h
+■ソースコード
 
-�@���̂ւ�ɂ����Ă܂��B���Ƃ��ς����Ă��B
-�@http://code.google.com/p/rutice/
-�@���ώ��̓\�[�X���J���肢���܂��B
+　このへんにおいてます。わりとすぱげってぃ。
+　http://code.google.com/p/rutice/
+　改変時はソース公開お願いします。
 
-������̕��j
+■今後の方針
 
-�@�E���肵����chapter.auf�ƕ����Ĕz�z����
-�@�E�G���[�`�F�b�N�������Ƃ���
+　・安定したらchapter.aufと併せて配布する
+　・エラーチェックをちゃんとする
 
-������
+■履歴
 
 2011.03.04
-�@BonTsDemux�ŏo�͂���wav��ǂݍ��߂�悤�ɂ����iRF64�͂܂����x�j
-�@�������������P
+　BonTsDemuxで出力したwavを読み込めるようにした（RF64はまた今度）
+　内部処理を改善
 
 2011.03.01
-�@FAW�Ή��iFAWPreview.auf���K�v�j
-�@�����������������ichapter.auf�Ɠ��l�̏����j
-�@�@�@�@
+　FAW対応（FAWPreview.aufが必要）
+　無音検索を高速化（chapter.aufと同様の処理）
+　　　　
 2011.02.25
-�@�����������Ƃ����B
-�@�摜�Ɖ����ɕʂ̃\�[�X���w��ł���悤�ɂȂ����B
-�@���̓v���O�C�����w��ł���悤�ɂȂ����B
-�@wav�͓��̓v���O�C���Ȃ��œǂ߂�悤�ɂȂ����B
+　引数をちゃんとした。
+　画像と音声に別のソースを指定できるようになった。
+　入力プラグインを指定できるようになった。
+　wavは入力プラグインなしで読めるようになった。
 
 2011.02.24
-�@ ���ŁB����Ă݂��B
+　 初版。作ってみた。
