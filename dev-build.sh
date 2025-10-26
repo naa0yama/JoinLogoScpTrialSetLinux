@@ -2,6 +2,7 @@
 set -euo pipefail
 
 # Default values
+SHELL_ARGS=()
 DOCKER_ROOT="no"
 DOCKER_SHELL="no"
 DOCKER_TAG="ubuntu2404"
@@ -13,6 +14,10 @@ INPUT=""
 # Parse arguments
 while [[ $# -gt 0 ]]; do
 	case $1 in
+		--find)
+			SHELL_ARGS+="--find"
+			shift
+			;;
 		--tag)
 			DOCKER_TAG="$2"
 			shift 2
@@ -176,5 +181,5 @@ else
 		-v $PWD/modules/join_logo_scp_trial/result:/join_logo_scp_trial/result \
 		-v $PWD/modules/join_logo_scp_trial/src:/join_logo_scp_trial/src \
 		${DRI_DEVICE_OPT} \
-		"${IMAGE_NAME}" test_jlse
+		"${IMAGE_NAME}" test_jlse ${SHELL_ARGS[@]}
 fi
