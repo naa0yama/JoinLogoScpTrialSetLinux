@@ -844,7 +844,7 @@ ARG JLSTSL_OBUPARSE_VERSION=665c8fbd8e078868c3509f17a53b2970fad83520
 
 ## FFmpeg
 ### Ref: https://github.com/FFmpeg/FFmpeg/tags
-ARG JLSTSL_FFMPEG_VERSION=n6.1.2
+ARG JLSTSL_FFMPEG_VERSION=n8.0
 
 ## L-SMASH
 ARG JLSTSL_LSMASH_URL=https://github.com/vimeo/l-smash.git

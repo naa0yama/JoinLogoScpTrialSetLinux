@@ -126,9 +126,11 @@ if [ ! -n "$(ls -A $PWD/modules/join_logo_scp_trial/logo)" ]; then
 fi
 
 set -x
+if [ "${DOCKER_SHELL}" != "yes" ]; then
 sudo rm -rfv modules/join_logo_scp_trial/result/* \
 				$PWD/videos/source/*.{lwi,mp4} \
 				$PWD/videos/source:/source/*.{lwi,mp4}
+fi
 # Docker実行コマンドの決定
 # GitHub Actionモードでは完全なイメージ名を使用、通常モードではtmp-プレフィックスを付与
 if [ "${GH_ACTION}" == "yes" ]; then
