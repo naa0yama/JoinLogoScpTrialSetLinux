@@ -1,9 +1,22 @@
 #!/usr/bin/env bash
-set -euxo pipefail
+set -euo pipefail
 
 LOG_FILE="${LOG_FILE:-/tmp/test_jlse.log}"
 NO_COLOR="${NO_COLOR:-no}"
 INPUT="${INPUT:-/source/jtv_scene_06min.ts}"
+
+# Parse arguments
+FIND_MODE=false
+for arg in "$@"; do
+	case "${arg}" in
+		--find)
+			FIND_MODE=true
+			shift
+			;;
+		*)
+			;;
+	esac
+done
 
 # Initialize log
 : > "$LOG_FILE"
@@ -40,22 +53,186 @@ logger() {
 	echo "${message}" >> "${LOG_FILE}"
 }
 
-logger "Default test. ${INPUT}" yellow
-if [[ ! -f "${INPUT}" ]]; then
-	logger "Default testfile not found."
-	logger "Generate ts file."
-	JTV_TEMP=$(mktemp -q -d)
-	cd "${JTV_TEMP}"
-	curl -o jtv_gen.sh -sfSL https://raw.githubusercontent.com/naa0yama/jtv-gen/refs/heads/main/jtv_gen.sh
-	chmod +x jtv_gen.sh
-	./jtv_gen.sh -y
+# Process single TS file
+# Args: $1=input_file, $2=check_duration (true/false)
+# Sets global vars: LAST_SRC_DURATION, LAST_DST_DURATION, LAST_STATUS
+# Returns: 0=success, 1=failure
+process_single_file() {
+	local input_file="${1}"
+	local check_duration="${2:-true}"
 
-	logger "Copy ${INPUT}"
-	cp output/scene_06min/jtv_scene_06min.ts /source
-fi
+	LAST_SRC_DURATION=""
+	LAST_DST_DURATION=""
+	LAST_STATUS="FAILED"
 
+	# Get source duration
+	LAST_SRC_DURATION=$(ffprobe -v error -show_entries format=duration -of csv=p=0 "${input_file}" 2>/dev/null)
+	if [[ -z "${LAST_SRC_DURATION}" ]]; then
+		logger "## Failed to get source duration for ${input_file}" red
+		return 1
+	fi
 
-set +x
+	# Run jlse
+	if ! jlse --input "${input_file}"; then
+		logger "## jlse failed for ${input_file} with exit code $?" red
+		return 1
+	fi
+
+	# Get destination duration
+	local result_base="/join_logo_scp_trial/result/$(basename ${input_file} .ts)"
+	local avs_file="${result_base}/in_cutcm_logo.avs"
+
+	if [[ ! -f "${avs_file}" ]]; then
+		logger "## Output AVS file not found: ${avs_file}" red
+		return 1
+	fi
+
+	LAST_DST_DURATION=$(ffprobe -v error -show_entries format=duration -of csv=p=0 "${avs_file}" 2>/dev/null)
+	if [[ -z "${LAST_DST_DURATION}" ]]; then
+		logger "## Failed to get destination duration for ${avs_file}" red
+		return 1
+	fi
+
+	LAST_STATUS="SUCCESS"
+
+	# Duration validation (only if check_duration is true)
+	if [[ "${check_duration}" == "true" ]]; then
+		local src_dur_int="${LAST_SRC_DURATION%.*}"
+		local dst_dur_int="${LAST_DST_DURATION%.*}"
+
+		logger "## - source:       ${input_file}"
+		logger "##    - duration:  ${src_dur_int}"
+		logger "## - destnation:   ${input_file%.ts}.mp4"
+		logger "##    - duration:  ${dst_dur_int}"
+		logger "##"
+
+		if (( ${dst_dur_int} >= 208 && ${dst_dur_int} <= 212 )); then
+			logger "## duration=${dst_dur_int} Complete jlse is running normally." green
+		else
+			logger "## duration=${dst_dur_int}" red
+			logger "## The jlse cut range is higher or lower than expected (normal value is between 208-212 seconds)." red
+			return 1
+		fi
+	fi
+
+	return 0
+}
+
+# Print statistics table
+# Uses global array: RESULTS (format: "filename|src_dur|dst_dur|status")
+print_statistics() {
+	logger "## ============================================================================="
+	logger "## Statistics Report"
+	logger "## ============================================================================="
+
+	local success_count=0
+	local total_count=${#RESULTS[@]}
+
+	logger "## Total files found: ${total_count}"
+	logger "##"
+
+	# Check if there are any results
+	if [[ ${total_count} -eq 0 ]]; then
+		logger "## No results to display" yellow
+		logger "## ============================================================================="
+		return 0
+	fi
+
+	# Header
+	logger "$(printf "## %-42s %12s %12s %s" "Filename" "Src Dur (s)" "Dst Dur (s)" "Status")"
+	logger "## -----------------------------------------------------------------------------"
+
+	for result in "${RESULTS[@]}"; do
+		IFS='|' read -r filename src_dur dst_dur status <<< "${result}"
+
+		# Format durations (remove decimal part)
+		local src_dur_int="${src_dur%.*}"
+		local dst_dur_int="${dst_dur%.*}"
+
+		# If dst_dur is empty, show "-"
+		[[ -z "${dst_dur_int}" ]] && dst_dur_int="-"
+
+		# Color based on status
+		local color="red"
+		if [[ "${status}" == "SUCCESS" ]]; then
+			color="green"
+			success_count=$((success_count + 1))
+		fi
+
+		# Print row with color
+		local row=$(printf "## %-42s %12s %12s %s" "$(basename ${filename})" "${src_dur_int}" "${dst_dur_int}" "${status}")
+		logger "${row}" "${color}"
+	done
+
+	logger "## ============================================================================="
+
+	# Summary
+	if (( success_count == total_count )); then
+		logger "## Summary: ${success_count}/${total_count} files succeeded" green
+	else
+		logger "## Summary: ${success_count}/${total_count} files succeeded" yellow
+	fi
+
+	logger "## ============================================================================="
+}
+
+# Process multiple TS files in find mode
+process_find_mode() {
+	logger "## ============================================================================="
+	logger "## Find mode: Processing all *.ts files in /source/"
+	logger "## ============================================================================="
+
+	# Find all TS files
+	local ts_files=(/source/*.ts)
+
+	# Check if any files found
+	if [[ ${#ts_files[@]} -eq 0 ]] || [[ ! -e "${ts_files[0]}" ]]; then
+		logger "## No *.ts files found in /source/" red
+		return 1
+	fi
+
+	logger "## Found ${#ts_files[@]} file(s)"
+	logger "##"
+
+	# Initialize results array
+	declare -g -a RESULTS=()
+
+	# Process each file
+	local file_index=0
+	for ts_file in "${ts_files[@]}"; do
+		file_index=$((file_index + 1))
+		logger "## -----------------------------------------------------------------------------"
+		logger "## Processing file ${file_index}/${#ts_files[@]}: ${ts_file}" cyan
+
+		# Allow jlse to fail without stopping the script
+		set +e
+		process_single_file "${ts_file}" "false"
+		local exit_code=$?
+		set -e
+
+		logger "## Exit code: ${exit_code}"
+		logger "## LAST_SRC_DURATION: ${LAST_SRC_DURATION:-<empty>}"
+		logger "## LAST_DST_DURATION: ${LAST_DST_DURATION:-<empty>}"
+
+		# Store result
+		if [[ ${exit_code} -eq 0 ]]; then
+			RESULTS+=("${ts_file}|${LAST_SRC_DURATION}|${LAST_DST_DURATION}|SUCCESS")
+			logger "## Result: SUCCESS" green
+		else
+			RESULTS+=("${ts_file}|${LAST_SRC_DURATION}|${LAST_DST_DURATION}|FAILED")
+			logger "## Result: FAILED" red
+		fi
+		logger "## Total results stored: ${#RESULTS[@]}"
+		logger "##"
+	done
+
+	# Print statistics
+	print_statistics
+
+	return 0
+}
+
+# Main execution
 logger "## ============================================================================="
 logger "## Report test_jlse."
 logger "## - versions:"
@@ -75,28 +252,35 @@ logger "$(jq -r '
 			"##    \(.key):\(" " * ($maxlen - (.key | length) + 7))\(.value)"
 		' /opt/ffmpeg/versions.json)"
 logger "##"
-set -x
 
-set +x
-if ! jlse --input "${INPUT}"; then
-	logger "## jlse failed with exit code $?. Stopping execution." red
-	exit 1
-fi
-set +x
-
-src_duration=$(ffprobe -v error -show_entries format=duration -of csv=p=0 "${INPUT}")
-dst_duration=$(ffprobe -v error -show_entries format=duration -of csv=p=0 "/join_logo_scp_trial/result/$(basename ${INPUT} .ts)/in_cutcm_logo.avs")
-logger "## - source:       ${INPUT}"
-logger "##    - duration:  ${src_duration%.*}"
-logger "## - destnation:   ${INPUT%.ts}.mp4"
-logger "##    - duration:  ${dst_duration%.*}"
-logger "##"
-if (( ${dst_duration%.*} >= 208 && ${dst_duration%.*} <= 212 )); then
-	logger "## duration=${dst_duration%.*} Complete jlse is running normally." green
+if [[ "${FIND_MODE}" == "true" ]]; then
+	# Find mode: process all *.ts files in /source/
+	process_find_mode
+	exit_code=$?
 else
-	logger "## duration=${dst_duration%.*}" red
-	logger "## The jlse cut range is higher or lower than expected (normal value is between 208-212 seconds)." red
-	exit 1
+	# Normal mode: process single file with duration check
+	logger "Default test. ${INPUT}" yellow
+	if [[ ! -f "${INPUT}" ]]; then
+		logger "Default testfile not found."
+		logger "Generate ts file."
+		JTV_TEMP=$(mktemp -q -d)
+		cd "${JTV_TEMP}"
+		curl -o jtv_gen.sh -sfSL https://raw.githubusercontent.com/naa0yama/jtv-gen/refs/heads/main/jtv_gen.sh
+		chmod +x jtv_gen.sh
+		./jtv_gen.sh -y
+
+		logger "Copy ${INPUT}"
+		cp output/scene_06min/jtv_scene_06min.ts /source
+	fi
+
+	# Process single file with duration check
+	if process_single_file "${INPUT}" "true"; then
+		logger "##     Complete test_jlse." green
+		logger "##     logfile: ${LOG_FILE}" green
+		exit_code=0
+	else
+		exit_code=1
+	fi
 fi
-logger "##     Complete test_jlse." green
-logger "##     logfile: ${LOG_FILE}" green
+
+exit ${exit_code}
