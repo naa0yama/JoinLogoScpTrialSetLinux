@@ -29,7 +29,7 @@ ARG INTEL_VPL_GPU_RT_VERSION=intel-onevpl-24.3.4
 ## renovate: datasource=git-tags packageName=https://code.videolan.org/videolan/dav1d.git versioning=semver
 ARG AV1_DAV1D_VERSION=1.5.1
 ## renovate: datasource=git-tags packageName=https://gitlab.com/AOMediaCodec/SVT-AV1.git versioning=semver
-ARG AV1_SVTAV1_VERSION=v2.3.0
+ARG AV1_SVTAV1_VERSION=v3.1.2
 ## renovate: datasource=github-releases packageName=AviSynth/AviSynthPlus versioning=semver
 ARG AVISYNTHPLUS_VERSION=v3.7.5
 ## renovate: datasource=github-releases packageName=xqq/libaribcaption versioning=semver
