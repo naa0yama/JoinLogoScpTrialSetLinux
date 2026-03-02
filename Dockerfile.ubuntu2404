@@ -848,10 +848,12 @@ ARG JLSTSL_FFMPEG_VERSION=n8.0
 
 ## L-SMASH
 ARG JLSTSL_LSMASH_URL=https://github.com/Mr-Ojii/l-smash.git
+## renovate: datasource=git-refs packageName=https://github.com/Mr-Ojii/l-smash.git branch=master versioning=git
 ARG JLSTSL_LSMASH_VERSION=8cc22c34cf4178eb32629f4a82c3245c6243f7c7
 
 ## L-SMASH-Works
 ARG JLSTSL_LSMASHWORKS_URL=https://github.com/Mr-Ojii/L-SMASH-Works.git
+## renovate: datasource=git-refs packageName=https://github.com/Mr-Ojii/L-SMASH-Works.git branch=master versioning=git
 ARG JLSTSL_LSMASHWORKS_VERSION=661c367abab3119bdc2bbcc44355487409f47f3b
 # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> WARNING <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
