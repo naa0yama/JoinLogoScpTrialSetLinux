@@ -47,7 +47,7 @@ ARG X265_VERSION=4.0
 
 # FFmpeg
 ## renovate: datasource=github-tags packageName=FFmpeg/FFmpeg versioning=semver
-ARG FFMPEG_VERSION=n7.1
+ARG FFMPEG_VERSION=n8.0.1
 
 # Ref: https://github.com/wader/static-ffmpeg/blob/master/Dockerfile
 # -O3 makes sure we compile with optimization. setting CFLAGS/CXXFLAGS seems to override
@@ -837,14 +837,13 @@ ARG CFLAGS \
 	LDFLAGS
 
 # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> WARNING <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
-## Due to code agreements with l-smash and L-SMASH-Works,
-## use with FFmpeg 7.0.0 or higher is unstable, so the version will be fixed.
 ## Ref: https://github.com/dwbuiten/obuparse/commits/master/
 ARG JLSTSL_OBUPARSE_VERSION=665c8fbd8e078868c3509f17a53b2970fad83520
 
 ## FFmpeg
 ### Ref: https://github.com/FFmpeg/FFmpeg/tags
-ARG JLSTSL_FFMPEG_VERSION=n8.0
+ARG FFMPEG_VERSION
+ARG JLSTSL_FFMPEG_VERSION=$FFMPEG_VERSION
 
 ## L-SMASH
 ARG JLSTSL_LSMASH_URL=https://github.com/Mr-Ojii/l-smash.git
