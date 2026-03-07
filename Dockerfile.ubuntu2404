@@ -15,7 +15,7 @@ ARG NODE_VERSION=18
 ## renovate: datasource=github-tags packageName=intel/gmmlib versioning=semver
 ARG INTEL_GMMLIB_VERSION=intel-gmmlib-22.6.0
 ## renovate: datasource=github-releases packageName=intel/libva-utils
-ARG INTEL_LIBVA_UTILS_VERSION=2.22.0
+ARG INTEL_LIBVA_UTILS_VERSION=2.23.0
 ## renovate: datasource=github-releases packageName=intel/libva versioning=semver
 ARG INTEL_LIBVA_VERSION=2.23.0
 ## renovate: datasource=github-tags packageName=intel/libvpl versioning=git
