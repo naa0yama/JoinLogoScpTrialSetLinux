@@ -2,6 +2,7 @@
 set -euo pipefail
 
 # Default values
+SHELL_ARGS=()
 DOCKER_ROOT="no"
 DOCKER_SHELL="no"
 DOCKER_TAG="ubuntu2404"
@@ -13,6 +14,10 @@ INPUT=""
 # Parse arguments
 while [[ $# -gt 0 ]]; do
 	case $1 in
+		--find)
+			SHELL_ARGS+="--find"
+			shift
+			;;
 		--tag)
 			DOCKER_TAG="$2"
 			shift 2
@@ -126,9 +131,11 @@ if [ ! -n "$(ls -A $PWD/modules/join_logo_scp_trial/logo)" ]; then
 fi
 
 set -x
+if [ "${DOCKER_SHELL}" != "yes" ]; then
 sudo rm -rfv modules/join_logo_scp_trial/result/* \
 				$PWD/videos/source/*.{lwi,mp4} \
 				$PWD/videos/source:/source/*.{lwi,mp4}
+fi
 # Docker実行コマンドの決定
 # GitHub Actionモードでは完全なイメージ名を使用、通常モードではtmp-プレフィックスを付与
 if [ "${GH_ACTION}" == "yes" ]; then
@@ -174,5 +181,5 @@ else
 		-v $PWD/modules/join_logo_scp_trial/result:/join_logo_scp_trial/result \
 		-v $PWD/modules/join_logo_scp_trial/src:/join_logo_scp_trial/src \
 		${DRI_DEVICE_OPT} \
-		"${IMAGE_NAME}" test_jlse
+		"${IMAGE_NAME}" test_jlse ${SHELL_ARGS[@]}
 fi

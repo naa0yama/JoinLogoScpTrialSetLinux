@@ -17,7 +17,7 @@ ARG INTEL_GMMLIB_VERSION=intel-gmmlib-22.6.0
 ## renovate: datasource=github-releases packageName=intel/libva-utils
 ARG INTEL_LIBVA_UTILS_VERSION=2.22.0
 ## renovate: datasource=github-releases packageName=intel/libva versioning=semver
-ARG INTEL_LIBVA_VERSION=2.22.0
+ARG INTEL_LIBVA_VERSION=2.23.0
 ## renovate: datasource=github-tags packageName=intel/libvpl versioning=git
 ARG INTEL_LIBVPL_VERSION=v2.14.0
 ## renovate: datasource=github-releases packageName=intel/media-driver
@@ -47,7 +47,7 @@ ARG X265_VERSION=4.0
 
 # FFmpeg
 ## renovate: datasource=github-tags packageName=FFmpeg/FFmpeg versioning=semver
-ARG FFMPEG_VERSION=n7.1
+ARG FFMPEG_VERSION=n8.0.1
 
 # Ref: https://github.com/wader/static-ffmpeg/blob/master/Dockerfile
 # -O3 makes sure we compile with optimization. setting CFLAGS/CXXFLAGS seems to override
@@ -65,7 +65,7 @@ ARG CURL_OPTS="-sfSL --retry 3 --retry-delay 2 --retry-connrefused"
 #- -------------------------------------------------------------------------------------------------
 #- Builder
 #-
-FROM ubuntu:noble-20251001@sha256:c088e23bdf7b8b339bd38150d130d17e5f6ee016f3c422755bdb1da919c2ff32 AS base
+FROM ubuntu:noble-20260210.1@sha256:d1e2e92c075e5ca139d51a140fff46f84315c0fdce203eab2807c7e495eff4f9 AS base
 # ARG は、利用する各ステージごとに宣言する必要がある。
 ARG CURL_OPTS
 ARG DEBCONF_NOWARNINGS
@@ -837,30 +837,23 @@ ARG CFLAGS \
 	LDFLAGS
 
 # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> WARNING <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
-## Due to code agreements with l-smash and L-SMASH-Works,
-## use with FFmpeg 7.0.0 or higher is unstable, so the version will be fixed.
 ## Ref: https://github.com/dwbuiten/obuparse/commits/master/
-ARG JLSTSL_OBUPARSE_VERSION=8acb5193a64e5c8281c9f22805f75f044f5931f7
+ARG JLSTSL_OBUPARSE_VERSION=665c8fbd8e078868c3509f17a53b2970fad83520
 
 ## FFmpeg
 ### Ref: https://github.com/FFmpeg/FFmpeg/tags
-ARG JLSTSL_FFMPEG_VERSION=n6.1.2
+ARG FFMPEG_VERSION
+ARG JLSTSL_FFMPEG_VERSION=$FFMPEG_VERSION
 
 ## L-SMASH
-ARG JLSTSL_LSMASH_URL=https://github.com/vimeo/l-smash.git
-ARG JLSTSL_LSMASH_VERSION=30270d0d8b551b36b6f46c43bd3ffe997f13e157
+ARG JLSTSL_LSMASH_URL=https://github.com/Mr-Ojii/l-smash.git
+## renovate: datasource=git-refs packageName=https://github.com/Mr-Ojii/l-smash.git branch=master versioning=git
+ARG JLSTSL_LSMASH_VERSION=8cc22c34cf4178eb32629f4a82c3245c6243f7c7
 
 ## L-SMASH-Works
-ARG JLSTSL_LSMASHWORKS_URL=https://github.com/HomeOfAviSynthPlusEvolution/L-SMASH-Works.git
-ARG JLSTSL_LSMASHWORKS_VERSION=1170.0.0.0
-# X 20250706	1266.0.0.0
-# X 20250630	1262.0.0.0
-# X 20250501	1252.0.0.0
-# X 20240408	1194.0.0.0
-# X 20240407	1192.0.0.0
-# X 20240402	1187.0.0.0
-# X 20240317	1183.0.0.0
-# O 20240304	1170.0.0.0
+ARG JLSTSL_LSMASHWORKS_URL=https://github.com/Mr-Ojii/L-SMASH-Works.git
+## renovate: datasource=git-refs packageName=https://github.com/Mr-Ojii/L-SMASH-Works.git branch=master versioning=git
+ARG JLSTSL_LSMASHWORKS_VERSION=661c367abab3119bdc2bbcc44355487409f47f3b
 # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> WARNING <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
 COPY --from=build-library	"${PREFIX}"										"${PREFIX}"
@@ -1023,6 +1016,16 @@ RUN echo "**** JLSTSL | l-smash ****" && \
 	mv -v l-smash "${PREFIX}-src"
 
 ## L-SMASH-Works
+# HomeOfAviSynthPlusEvolution Required
+#RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+#	--mount=type=cache,target=/var/lib/apt,sharing=locked \
+#	\
+#	echo "**** JLSTSL | L-SMASH-Works | Build Dependencies ****" && \
+#	set -eux && \
+#	apt-get update && \
+#	apt-get -y install --no-install-recommends \
+#	libxxhash-dev
+
 RUN echo "**** JLSTSL | L-SMASH-Works | build ****" && \
 	set -euxo pipefail && \
 	cd "${PREFIX}" && \
