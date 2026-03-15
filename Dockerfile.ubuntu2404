@@ -853,7 +853,7 @@ ARG JLSTSL_LSMASH_VERSION=8cc22c34cf4178eb32629f4a82c3245c6243f7c7
 ## L-SMASH-Works
 ARG JLSTSL_LSMASHWORKS_URL=https://github.com/Mr-Ojii/L-SMASH-Works.git
 ## renovate: datasource=git-refs packageName=https://github.com/Mr-Ojii/L-SMASH-Works.git branch=master versioning=git
-ARG JLSTSL_LSMASHWORKS_VERSION=661c367abab3119bdc2bbcc44355487409f47f3b
+ARG JLSTSL_LSMASHWORKS_VERSION=b5128a4b62209d16ed955394717eaab0dc13fec4
 # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> WARNING <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
 COPY --from=build-library	"${PREFIX}"										"${PREFIX}"
